@@ -1,13 +1,11 @@
 #
 # Makefile
 # Author: Shimi G.
-# Testing updates (Lior)
 #
 
-AS		= /usr/cross/i586-elf/bin/as.exe
-LD		= /usr/cross/i586-elf/bin/ld.exe
-CC		= /usr/cross/i586-elf/bin/gcc.exe
-DBW		= dbw.exe
+AS		= as
+LD		= ld
+CC		= gcc
 NASM	= nasmw
 CFLAGS	= -Wall
 OUTPUT	= bin/
