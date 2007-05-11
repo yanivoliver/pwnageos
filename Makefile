@@ -1,6 +1,7 @@
 #
 # Makefile
 # Author: Shimi G.
+# Testing updates (Lior)
 #
 
 AS		= /usr/cross/i586-elf/bin/as.exe
