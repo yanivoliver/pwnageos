@@ -10,7 +10,7 @@ Date: 11/05/07
 #include "memory.h"
 #include "screen.h"
 
-extern void load_tr(ushort_t * row);
+extern void load_tr(ushort_t row);
 
 /* TSS Entry */
 tss_t g_tss;
@@ -45,6 +45,8 @@ bool_t init_tss()
 	tss_entry->type = TSS_TYPE_AVAILABLE;
 	tss_entry->reserved = 0;
 	tss_entry->granularity = GDT_GRANULARITY_BYTES;
+
+	load_tr( segment_selector(KERNEL_PRIVILEGE, TRUE, tss_entry_index) );
 
 	/* Success */
 	return TRUE;
