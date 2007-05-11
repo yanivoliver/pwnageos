@@ -9,7 +9,9 @@ CC		= /usr/cross/i586-elf/bin/gcc.exe
 DBW		= dbw.exe
 NASM	= nasmw
 CFLAGS	= -Wall
-OUTPUT	= output/
+OUTPUT	= bin/
+SRC 		= src/
+INCLUDE = include/
 
 # $@ - Output
 # $? - Depends
@@ -20,38 +22,38 @@ kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o irq.o memory.o 
 	make bootloader
 	make boot.bin
 	
-bootloader: bootloader.asm
+bootloader: $(SRC)bootloader.asm
 	$(NASM) -o $(OUTPUT)$@ $?
 	
-boot.bin: boot.asm
+boot.bin: $(SRC)boot.asm
 	$(NASM) -o $(OUTPUT)$@ $?
 
-interrupts.o : interrupts.c interrupts.h common.h irq.h
-	$(CC) -c -o $@ interrupts.c
+interrupts.o : $(SRC)interrupts.c
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)interrupts.c
 	
-io.o : io.c io.h common.h
-	$(CC) -c -o $@ io.c
+io.o : $(SRC)io.c
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)io.c
 
-irq.o : irq.c irq.h io.h common.h interrupts.h
-	$(CC) -c -o $@ irq.c
+irq.o : $(SRC)irq.c
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)irq.c
 
-screen.o : screen.c screen.h io.h io.o common.h
-	$(CC) -c -o $@ screen.c
+screen.o : $(SRC)screen.c io.o
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)screen.c
 	
-memory.o : memory.c common.h
-	$(CC) -c -o $@ memory.c
+memory.o : $(SRC)memory.c
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)memory.c
 	
-gdt.o : gdt.c memory.o common.h gdt.h
-	$(CC) -c -o $@ gdt.c
+gdt.o : $(SRC)gdt.c memory.o
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)gdt.c
 	
-tss.o : tss.c memory.o gdt.o
-	$(CC) -c -o $@ tss.c
+tss.o : $(SRC)tss.c memory.o gdt.o
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)tss.c
 
-main.o : main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o common.h
-	$(CC) -c -o $@ main.c
+main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)main.c
 
-kernel_lowlevel.o : kernel_lowlevel.asm
-	$(NASM) -f coff -o $@ $?
+kernel_lowlevel.o : $(SRC)kernel_lowlevel.asm
+	$(NASM) -f coff -I$(INCLUDE) -o $@ $?
 	
 clean:
 	rm *.o
