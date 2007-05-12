@@ -73,6 +73,7 @@ void init_idt()
 
 	/* Install sys-call handler */
 	install_interrupt_handler(0xFF, sys_call_handler);
+	install_interrupt_handler(0x0D, gpf_handler);
 
 	/* Set the idt register value */
 	idt_pointer[0] = IDT_ENTRY_SIZE * NUMBER_OF_IDT_ENTRIES;
@@ -152,6 +153,11 @@ bool_t uninstall_interrupt_handler(ushort_t interrupt_number)
 void sys_call_handler(ushort_t interrupt_number, registers_t * registers)
 {
 	printf("SYS CALL !!!\n");
+}
+
+void gpf_handler(ushort_t interrupt_number, registers_t * registers)
+{
+	printf("** General protection fault\n");
 }
 
 void keyboard_handler(ushort_t irq, registers_t * registers)

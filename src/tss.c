@@ -33,8 +33,7 @@ bool_t init_tss()
 
 	/* Get gdt */
 	tss_entry = get_gdt_entry(tss_entry_index);
-	if (NULL == tss_entry)
-	{
+	if (NULL == tss_entry) {
 		/* Error allocating gdt entry */
 		return FALSE;
 	}
@@ -55,17 +54,14 @@ bool_t init_tss()
 	/* Set tss values */
 	memset(&g_tss, '\0', sizeof(tss_t));
 	g_tss.ss_0 = KERNEL_DS;
-	g_tss.esp_0 = 0x80000;
 	g_tss.ss_1 = KERNEL_DS;
-	g_tss.esp_1 = 0x80000;
 	g_tss.ss_2 = KERNEL_DS;
-	g_tss.esp_2 = 0x50000;
-	g_tss.es = USER_DS | 0x0003;
-	g_tss.cs = USER_CS | 0x0003;
-	g_tss.ds = USER_DS | 0x0003;
-	g_tss.ss = USER_DS | 0x0003;
-	g_tss.fs = USER_DS | 0x0003;
-	g_tss.gs = USER_DS | 0x0003;
+	g_tss.es = USER_DS;
+	g_tss.cs = USER_CS;
+	g_tss.ds = USER_DS;
+	g_tss.ss = USER_DS;
+	g_tss.fs = USER_DS;
+	g_tss.gs = USER_DS;
 	g_tss.eip = idle;
 	g_tss.esp = 0x80000;
 	g_tss.eflags = 0x0202;

@@ -23,23 +23,23 @@ bool_t init_schedule()
 
 	/* Process 1*/
 	g_process_list[1].process_id = 1;
-	g_process_list[1].registers.ds = USER_DS | 0x0003;
-	g_process_list[1].registers.es = USER_DS | 0x0003;
-	g_process_list[1].registers.fs = USER_DS | 0x0003;
-	g_process_list[1].registers.ss_iret = USER_DS | 0x0003;
+	g_process_list[1].registers.ds = USER_DS;
+	g_process_list[1].registers.es = USER_DS;
+	g_process_list[1].registers.fs = USER_DS;
+	g_process_list[1].registers.ss_iret = USER_DS;
 	g_process_list[1].registers.esp_iret = 0x50000;
-	g_process_list[1].registers.cs_iret = USER_CS | 0x0003;
+	g_process_list[1].registers.cs_iret = USER_CS;
 	g_process_list[1].registers.eip_iret = idle;
 	g_process_list[1].registers.eflags_iret = 0x0202;
 
 	/* Process 2 */
 	g_process_list[2].process_id = 1;
-	g_process_list[2].registers.ds = USER_DS | 0x0003;
-	g_process_list[2].registers.es = USER_DS | 0x0003;
-	g_process_list[2].registers.fs = USER_DS | 0x0003;
-	g_process_list[2].registers.ss_iret = USER_DS | 0x0003;
+	g_process_list[2].registers.ds = USER_DS;
+	g_process_list[2].registers.es = USER_DS;
+	g_process_list[2].registers.fs = USER_DS;
+	g_process_list[2].registers.ss_iret = USER_DS;
 	g_process_list[2].registers.esp_iret = 0x80000;
-	g_process_list[2].registers.cs_iret = USER_CS | 0x0003;
+	g_process_list[2].registers.cs_iret = USER_CS;
 	g_process_list[2].registers.eip_iret = idle_second;
 	g_process_list[2].registers.eflags_iret = 0x0202;
 
@@ -95,9 +95,9 @@ void schedule(ushort_t irq, registers_t * registers)
 	registers->ds = g_current_process->registers.ds;
 	registers->es = g_current_process->registers.es;
 	registers->fs = g_current_process->registers.fs;
-
 	registers->eip_iret = g_current_process->registers.eip_iret;
 	registers->cs_iret = g_current_process->registers.cs_iret;
+	//registers->eflags_iret = g_current_process->registers.eflags_iret;
 	registers->eflags_iret = 0x0202;
 	registers->esp_iret = g_current_process->registers.esp_iret;
 	registers->ss_iret = g_current_process->registers.ss_iret;
@@ -130,12 +130,8 @@ void user_mode()
 
 void idle_second()
 {
-	
-	
 	for(;;) {
 		//__asm__("cli");
-		printf(".");
-		//__asm__("sti");
 	}
 	
 }
