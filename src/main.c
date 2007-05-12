@@ -4,6 +4,7 @@ Author: Shimi G.
 */
 #include "common.h"
 #include "interrupts.h"
+#include "schedule.h"
 #include "irq.h"
 #include "io.h"
 #include "screen.h"
@@ -84,6 +85,25 @@ int main(void)
 		infinite_loop();
 	}
 
+	/* Print pre-init message */
+	printf("Initializing scheduler ... ");
+
+	/* Initialize interrupts */
+	if (TRUE == init_schedule()) {
+		/* Print post-init message*/
+		console_foreground(0x4);
+		printf("[Done]\n");
+		console_foreground(0xF);
+	} else {
+		/* Error */
+		console_foreground(0x3);
+		printf("[Error]\n");
+		console_foreground(0xF);
+
+		/* Enter panic mode */
+		infinite_loop();
+	}
+	
 	__asm__("int $0x80");
 	__asm__("int $0x44");
 	__asm__("int $0x64");
@@ -92,7 +112,7 @@ int main(void)
 	__asm__("int $0x7F");
 		
 	/* Install timer handler */
-	install_irq_handler(0, timer_handler);
+	install_irq_handler(0, schedule);
 	enable_irq(0);
 
 	/* Enter into an infinite loop */
@@ -100,14 +120,6 @@ int main(void)
 
 	/* Return which doesnt ever supposed to happend*/
 	return 0;
-}
-
-void idle()
-{
-	/* Idle mode */
-	printf("YOHOOOOO");
-
-	infinite_loop();
 }
 
 void install_keyboard()

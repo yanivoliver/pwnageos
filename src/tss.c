@@ -10,13 +10,12 @@ Date: 11/05/07
 #include "memory.h"
 #include "screen.h"
 
+/* Extern from kernel-lowlevel */
 extern void load_tr(ushort_t row);
 
 /* TSS Entry */
 tss_t g_tss;
-
-/* Temp process */
-process_t g_process;
+ulong_t g_tss_entry_index = 0;
 
 bool_t init_tss()
 {
@@ -38,6 +37,9 @@ bool_t init_tss()
 		/* Error allocating gdt entry */
 		return FALSE;
 	}
+
+	/* Set global tss index */
+	g_tss_entry_index = tss_entry_index;
 
 	/* Set tss entry */
 	set_entry_bounds(tss_entry_index, (ulong_t)&g_tss, sizeof(tss_t));
@@ -61,9 +63,6 @@ bool_t init_tss()
 	g_tss.fs = KERNEL_DS;
 	g_tss.gs = KERNEL_DS;
 
-	/* g_process */
-	memset(&g_process, '\0', sizeof(process_t));
-
 	/* Load tss */
 	load_tr( segment_selector(KERNEL_PRIVILEGE, TRUE, tss_entry_index) );
 
@@ -71,8 +70,19 @@ bool_t init_tss()
 	return TRUE;
 }
 
-void print_tss()
+void set_tss_available()
 {
-	printf("%X%X%X%X", g_tss.esp_0);
-}
+	/* Declare variables */
+	gdt_entry_t * tss_entry = NULL;
 
+	/* Get gdt */
+	tss_entry = get_gdt_entry(g_tss_entry_index);
+	if (NULL == tss_entry)
+	{
+		/* Error allocating gdt entry */
+		return;
+	}
+
+	/* Set the type */
+	tss_entry->type = TSS_TYPE_AVAILABLE;
+}

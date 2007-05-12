@@ -4,6 +4,7 @@ Author: Shimi G.
 */
 #include "common.h"
 #include "interrupts.h"
+#include "schedule.h"
 #include "tss.h"
 
 extern void configure_pic();
@@ -151,19 +152,6 @@ bool_t uninstall_interrupt_handler(ushort_t interrupt_number)
 void sys_call_handler(ushort_t interrupt_number, registers_t * registers)
 {
 	printf("SYS CALL !!!\n");
-}
-
-void timer_handler(ushort_t irq, registers_t * registers)
-{
-	/* Go into user-mode */
-	ulong_t i = 0;
-	//if (0xBABEBABE == registers->ebx)
-	//{
-		printf("[%X%X%X%X,", registers->eax);
-		//printf("%X%X%X%X,", g_tss.esp_0);
-		print_tss();
-		printf("%X%X%X%X]", registers->edx);
-	//}
 }
 
 void keyboard_handler(ushort_t irq, registers_t * registers)

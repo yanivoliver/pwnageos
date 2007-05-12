@@ -7,7 +7,7 @@ This file is taken as is from GeekOS and altered to fit the project
 #ifndef HEADER_PWNAGE_IRQ
 #define HEADER_PWNAGE_IRQ
 
-#include "tss.h"
+#include "schedule.h"
 
 /* Set where the PIC's are located */
 #define PIC_0_CONTROL			(0x20)
@@ -56,6 +56,7 @@ void disable_irq(ushort_t irq);
 Function name	: common_irq_handler
 Purpose			: Common handler for all irq calls. Used as a gateway to the irq handler from the idt handler
 Parameters		: interrupt_number - The number of the interrupt
+				  registers - Thread registers
 */
 void common_irq_handler(ushort_t interrupt_number, registers_t * registers);
 

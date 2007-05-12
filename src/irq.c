@@ -1,11 +1,12 @@
 /*
 Handles irq's
 Author: Shimi G.
-This file is taken as is from GeekOS and altered to fit the project
+IRQ Handler - Inspired by GeekOS
 */
 #include "common.h"
 #include "io.h"
 #include "interrupts.h"
+#include "schedule.h"
 #include "irq.h"
 #include "tss.h"
 
