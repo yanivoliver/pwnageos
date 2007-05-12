@@ -70,4 +70,6 @@ Parameters		: None
 */
 void idle_second();
 
+void user_mode();
+
 #endif

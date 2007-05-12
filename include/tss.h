@@ -15,8 +15,7 @@ typedef struct tss_rec {
 	ushort_t	back_link;
 	ushort_t	reserved_0;
 	uint_t		esp_0;
-	ushort_t	ss_0;
-	ushort_t	reserved_1;
+	uint_t		ss_0;
 	uint_t		esp_1;
 	ushort_t	ss_1;
 	ushort_t	reserved_2;
@@ -59,6 +58,8 @@ Purpose			: Sets the tss entry to available type
 Parameters		: None
 */
 void set_tss_available();
+
+void print_tss();
 
 #endif
 

@@ -38,7 +38,7 @@ bootloader_32_bit:
     mov ss, ax
     
     ; Set the stack
-    mov esp, (4 * 1024) ; 4k of stack :P
+    mov esp, (4 * 1024 * 1024) ; 4k of stack :P
     
     ; Now we are in 32-bit protected mode
     ; we will jump here to the native c kernel code    
