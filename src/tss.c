@@ -15,6 +15,9 @@ extern void load_tr(ushort_t row);
 /* TSS Entry */
 tss_t g_tss;
 
+/* Temp process */
+process_t g_process;
+
 bool_t init_tss()
 {
 	/* Declare variables */
@@ -46,8 +49,30 @@ bool_t init_tss()
 	tss_entry->reserved = 0;
 	tss_entry->granularity = GDT_GRANULARITY_BYTES;
 
+	/* Set tss values */
+	memset(&g_tss, '\0', sizeof(tss_t));
+	g_tss.ss_0 = KERNEL_DS;
+	g_tss.ss_1 = KERNEL_DS;
+	g_tss.ss_1 = KERNEL_DS;
+	g_tss.es = KERNEL_DS;
+	g_tss.cs = KERNEL_DS;
+	g_tss.ds = KERNEL_DS;
+	g_tss.ss = KERNEL_DS;
+	g_tss.fs = KERNEL_DS;
+	g_tss.gs = KERNEL_DS;
+
+	/* g_process */
+	memset(&g_process, '\0', sizeof(process_t));
+
+	/* Load tss */
 	load_tr( segment_selector(KERNEL_PRIVILEGE, TRUE, tss_entry_index) );
 
 	/* Success */
 	return TRUE;
 }
+
+void print_tss()
+{
+	printf("%X%X%X%X", g_tss.esp_0);
+}
+

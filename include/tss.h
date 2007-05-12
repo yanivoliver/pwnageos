@@ -10,6 +10,33 @@ Author: Shimi G.
 #define TSS_TYPE_AVAILABLE	(9)
 #define TSS_TYPE_BUSY		(11)
 
+/* Registers */
+typedef struct registers_rec {
+	ulong_t fs;
+	ulong_t es;
+	ulong_t ds;
+	ulong_t edi;
+	ulong_t esi;
+	ulong_t ebp;
+	ulong_t esp;
+	ulong_t ebx;
+	ulong_t edx;
+	ulong_t ecx;
+	ulong_t eax;
+	ulong_t interrupt_number;
+	ulong_t error_code;
+	ulong_t eip_iret;
+	ulong_t cs_iret;
+	ulong_t eflags_iret;
+	ulong_t esp_iret;
+	ulong_t ss_iret;
+} registers_t;
+
+/* Process*/
+typedef struct process_rec {
+	registers_t registers;
+} process_t;
+
 /* Entry for a gdt */
 typedef struct tss_rec {
 	ushort_t	back_link;
@@ -53,4 +80,7 @@ typedef struct tss_rec {
 	ushort_t	io_map;
 } tss_t;
 
+void print_tss();
+
 #endif
+

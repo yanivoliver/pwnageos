@@ -26,8 +26,11 @@ typedef char * va_list;
 #define va_arg(LIST, TYPE) (LIST += sizeof(TYPE), (*((TYPE *)(LIST-sizeof(TYPE)))))
 
 /* Code segment and data segment */
-#define KERNEL_CS  (1<<3)
-#define KERNEL_DS  (2<<3)
+#define KERNEL_CS	(1<<3)
+#define KERNEL_DS	(2<<3)
+#define USER_CS		(3<<3)
+#define USER_DS		(4<<3)
+
 
 /* Priviliges */
 typedef enum protection_level_e {

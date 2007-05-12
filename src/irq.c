@@ -7,6 +7,7 @@ This file is taken as is from GeekOS and altered to fit the project
 #include "io.h"
 #include "interrupts.h"
 #include "irq.h"
+#include "tss.h"
 
 /* Global variable for the irq mask */
 ushort_t g_irq_mask = 0xfffb;
@@ -16,7 +17,7 @@ irq_handler_t g_irq_handlers[NUMBER_OF_IRQ_ENTRIES] = {0};
 
 /* Where the irq are mapped in the interrupt table */
 extern uchar_t g_first_external_interrupt;
-extern void common_irq_handler(ushort_t interrupt_number);
+extern void common_irq_handler(ushort_t interrupt_number, registers_t * registers);
 
 /* Macros to handle irq mask which is WORD and we use only one byte at a time */
 #define MASTER(mask)	((mask) & 0xff)
@@ -142,7 +143,7 @@ void disable_irq(ushort_t irq)
     set_irq_mask(mask);
 }
 
-void common_irq_handler(ushort_t interrupt_number)
+void common_irq_handler(ushort_t interrupt_number, registers_t * registers)
 {
 	/* Variables */
 	uchar_t command = 0;
@@ -154,7 +155,7 @@ void common_irq_handler(ushort_t interrupt_number)
 	/* Find and appropriate irq handler */
 	if (NULL != g_irq_handlers[irq]) {
 		/* Call the irq handler */
-		g_irq_handlers[irq](irq);
+		g_irq_handlers[irq](irq, registers);
 	} else {
 		/* No default handler found. Print an appropriate message */
 		printf("Irq 0x%X called, no deafult handler found !\n", irq);

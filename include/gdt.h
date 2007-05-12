@@ -75,4 +75,6 @@ Purpose			: Get a segment selector
 Parameters		: index - Requested gdt entry index
 */
 gdt_entry_t * get_gdt_entry(ulong_t index);
+
 #endif
+

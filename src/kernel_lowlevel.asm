@@ -15,7 +15,7 @@
 ; Macros
 ; ----------
 ; Interrupt main handler
-; Intel made our life harder when they made interrupts which push error codes and interrupts wich doesnt push them ..
+; Intel made our life harder when they made interrupts which push error codes and interrupts which doesnt push them ..
 ; This is why we have two diffrent basic interrupt handlers
 ; one which pushed a fake error code
 %macro basic_interrupt_handler 1
@@ -86,6 +86,7 @@ EXPORT load_ldtr
 EXPORT load_tr
 
 EXPORT infinite_loop
+EXPORT enter_user_mode
 
 EXPORT configure_pic
 
@@ -99,6 +100,9 @@ EXPORT common_interrupt_handler
 EXPORT g_first_external_interrupt
 
 IMPORT g_idt_handlers
+IMPORT idle
+IMPORT g_tss
+IMPORT g_process
 IMPORT printf
 
 
@@ -213,11 +217,43 @@ disable_interrupts:
     cli
     ret
     
+; Jump to user mode
+enter_user_mode:
+    ; Parameters: 0 - Pointer to function
+    ; Load SS
+    mov eax, (4<<3)
+    push eax
+    
+    ; Load ESP
+    mov eax, esp
+    push eax
+    
+    ; Load flags
+    pushf
+    
+    ; Load CS
+    mov eax, (3<<3)
+    push eax
+    
+    ; Load EIP of a function
+    mov eax, idle
+    push eax
+    
+    mov ax, (4<<3)
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    
+    iret
 
 ; New interrupt handler
 common_interrupt_handler:     
     cli
     
+    mov eax, 0BABEBABEh
+    mov ecx, 0BABEBABEh
+    mov edx, 0BABEBFBFh
+
     pusha
     push ds
     push es
@@ -243,8 +279,11 @@ common_interrupt_handler:
     
     ; Call the found handler
     ; Add the interrupt number parameter
+    mov edx, esp
+    push edx
     push ebx
     call eax
+    pop ebx
     pop ebx
     
     ; Continue the common handler
@@ -258,7 +297,7 @@ common_interrupt_handler:
     pop eax
     pop ebx
     
-.continue_common_handler :   
+.continue_common_handler :
     pop fs
     pop es
     pop ds
@@ -267,6 +306,14 @@ common_interrupt_handler:
     ; Skip the interrupt number and error code
     add esp, 8
     
+    ; Set the tss values
+    push eax
+    mov eax, g_tss
+    mov ebx, esp
+    add ebx, 4
+    mov [eax+4], ebx
+    pop eax
+       
     iret
 
 ; Enter into an infintie loop
@@ -282,7 +329,7 @@ g_basic_interrupt_handlers_table:
 
 
 ; Make all other handlers with a macro
-; Notice we already asigned interrupt 0
+; Notice we already assigned interrupt 0
 ; Interrupts 8, 10, 11, 12, 13, 14, 17 have error code
 ; pushed by the processor
 basic_interrupt_handler_with_error_code 0
@@ -315,4 +362,5 @@ interrupt_handlers_table_end:
 ; Some data variables
 g_basic_interrupt_handler_size      dd (((interrupt_handlers_table_end-g_basic_interrupt_handlers_table) / NUMBER_OF_IDT_ENTRIES) + 1)
 interrupt_message                   db 'Interrupt 0x%X called, no deafult handler found !', 00Ah, 0
+debug_message_1                     db '[%X%X]', 0
 
