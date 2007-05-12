@@ -28,8 +28,8 @@ typedef char * va_list;
 /* Code segment and data segment */
 #define KERNEL_CS	(1<<3)
 #define KERNEL_DS	(2<<3)
-#define USER_CS		(3<<3)
-#define USER_DS		(4<<3)
+#define USER_CS		((3<<3)|(0x0003))
+#define USER_DS		((4<<3)|(0x0003))
 
 
 /* Priviliges */
