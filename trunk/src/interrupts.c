@@ -4,6 +4,7 @@ Author: Shimi G.
 */
 #include "common.h"
 #include "interrupts.h"
+#include "tss.h"
 
 extern void configure_pic();
 extern void load_ldtr(ushort_t * row);
@@ -71,13 +72,6 @@ void init_idt()
 
 	/* Install sys-call handler */
 	install_interrupt_handler(0xFF, sys_call_handler);
-	
-	/* Install timer handler */
-	install_irq_handler(0, timer_handler);
-
-	/* Install Keyboard handler */
-	install_irq_handler(1, keyboard_handler);
-	enable_irq(1);
 
 	/* Set the idt register value */
 	idt_pointer[0] = IDT_ENTRY_SIZE * NUMBER_OF_IDT_ENTRIES;
@@ -154,21 +148,25 @@ bool_t uninstall_interrupt_handler(ushort_t interrupt_number)
 	return TRUE;
 }
 
-void sys_call_handler(ushort_t interrupt_number)
+void sys_call_handler(ushort_t interrupt_number, registers_t * registers)
 {
 	printf("SYS CALL !!!\n");
 }
 
-void timer_handler(ushort_t irq)
+void timer_handler(ushort_t irq, registers_t * registers)
 {
-	//begin_irq(0);
-
-	//printf("T,");	
-
-	//end_irq(0);
+	/* Go into user-mode */
+	ulong_t i = 0;
+	//if (0xBABEBABE == registers->ebx)
+	//{
+		printf("[%X%X%X%X,", registers->eax);
+		//printf("%X%X%X%X,", g_tss.esp_0);
+		print_tss();
+		printf("%X%X%X%X]", registers->edx);
+	//}
 }
 
-void keyboard_handler(ushort_t irq)
+void keyboard_handler(ushort_t irq, registers_t * registers)
 {
 	uchar_t scan_code = 0;
 
@@ -201,5 +199,5 @@ void keyboard_handler(ushort_t irq)
 	} else {
 		printf("%c", keyboard_map[scan_code]);
 	}
-	//printf("%X,", scan_code);
 }
+

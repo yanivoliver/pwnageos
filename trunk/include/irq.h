@@ -7,6 +7,8 @@ This file is taken as is from GeekOS and altered to fit the project
 #ifndef HEADER_PWNAGE_IRQ
 #define HEADER_PWNAGE_IRQ
 
+#include "tss.h"
+
 /* Set where the PIC's are located */
 #define PIC_0_CONTROL			(0x20)
 #define PIC_0_DATA				(0x21)
@@ -18,7 +20,7 @@ This file is taken as is from GeekOS and altered to fit the project
 #define IRQ_LOW_LIMIT			(0)
 
 /* Irq handler */
-typedef void (*irq_handler_t)(ushort_t irq);
+typedef void (*irq_handler_t)(ushort_t irq, registers_t * registers);
 
 /*
 Function name	: install_irq_handler
@@ -55,6 +57,6 @@ Function name	: common_irq_handler
 Purpose			: Common handler for all irq calls. Used as a gateway to the irq handler from the idt handler
 Parameters		: interrupt_number - The number of the interrupt
 */
-void common_irq_handler(ushort_t interrupt_number);
+void common_irq_handler(ushort_t interrupt_number, registers_t * registers);
 
 #endif

@@ -27,15 +27,6 @@ bootloader: $(SRC)bootloader.asm
 boot.bin: $(SRC)boot.asm
 	$(NASM) -o $(OUTPUT)$@ $?
 
-interrupts.o : $(SRC)interrupts.c
-	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)interrupts.c
-	
-io.o : $(SRC)io.c
-	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)io.c
-
-irq.o : $(SRC)irq.c
-	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)irq.c
-
 screen.o : $(SRC)screen.c io.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)screen.c
 	
@@ -47,6 +38,15 @@ gdt.o : $(SRC)gdt.c memory.o
 	
 tss.o : $(SRC)tss.c memory.o gdt.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)tss.c
+	
+interrupts.o : $(SRC)interrupts.c tss.o
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)interrupts.c
+	
+io.o : $(SRC)io.c
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)io.c
+
+irq.o : $(SRC)irq.c tss.o
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)irq.c
 
 main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)main.c

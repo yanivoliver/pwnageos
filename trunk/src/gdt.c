@@ -48,6 +48,28 @@ bool_t init_gdt()
 	g_gdt_table[2].granularity = GDT_GRANULARITY_PAGE;
 	g_gdt_table[2].used = 1;
 
+	/* Set user code segment */
+	set_entry_bounds(3, 0x0000, 0xFFFF);
+	g_gdt_table[3].db_bit = 1;
+	g_gdt_table[3].dpl = USER_PRIVILEGE;
+	g_gdt_table[3].present = 1;
+	g_gdt_table[3].system = 1;
+	g_gdt_table[3].type = GDT_CODE_TYPE;
+	g_gdt_table[3].reserved = 0;
+	g_gdt_table[3].granularity = GDT_GRANULARITY_PAGE;
+	g_gdt_table[3].used = 1;
+
+	/* Set user data segment */
+	set_entry_bounds(4, 0x0000, 0xFFFF);
+	g_gdt_table[4].db_bit = 1;
+	g_gdt_table[4].dpl = USER_PRIVILEGE;
+	g_gdt_table[4].present = 1;
+	g_gdt_table[4].system = 1;
+	g_gdt_table[4].type = GDT_DATA_TYPE;
+	g_gdt_table[4].reserved = 0;
+	g_gdt_table[4].granularity = GDT_GRANULARITY_PAGE;
+	g_gdt_table[4].used = 1;
+
 	/* Set the gdtr */
 	limit_base[0] = GDT_ENTRY_SIZE*NUMBER_OF_GDT_ENTRIES;
 	limit_base[1] = (ulong_t)g_gdt_table & 0xFFFF;

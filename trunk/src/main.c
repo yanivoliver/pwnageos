@@ -13,6 +13,11 @@ Author: Shimi G.
 /* Extern from kernel_low_level */
 extern void infinite_loop();
 
+extern void enter_user_mode();
+
+void install_keyboard();
+void idle();
+
 int main(void)
 {
 	/* Clear screen */
@@ -36,6 +41,10 @@ int main(void)
 		/* Enter panic mode */
 		infinite_loop();
 	}
+
+	/* Install Keyboard handler */
+	/* TODO - Keyboard managment file */
+	install_keyboard();
 
 	/* Print pre-init message */
 	printf("Initializing gdt table ... ");
@@ -81,10 +90,37 @@ int main(void)
 	__asm__("int $0x3");
 	__asm__("int $0xFF");
 	__asm__("int $0x7F");
+		
+	/* Install timer handler */
+	install_irq_handler(0, timer_handler);
+	enable_irq(0);
 
 	/* Enter into an infinite loop */
 	infinite_loop();
 
 	/* Return which doesnt ever supposed to happend*/
 	return 0;
+}
+
+void idle()
+{
+	/* Idle mode */
+	printf("YOHOOOOO");
+
+	infinite_loop();
+}
+
+void install_keyboard()
+{
+	/* Print message */
+	printf("Installing keyboard interrupt handler ... ");
+
+	/* Install */
+	install_irq_handler(1, keyboard_handler);
+	enable_irq(1);
+
+	/* Print done message */
+	console_foreground(0x4);
+	printf("[Done]\n");
+	console_foreground(0xF);
 }

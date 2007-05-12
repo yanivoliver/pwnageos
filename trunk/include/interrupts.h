@@ -6,6 +6,8 @@ Author: Shimi G.
 #ifndef HEADER_PWNAGE_INTERRUPTS
 #define HEADER_PWNAGE_INTERRUPTS
 
+#include "tss.h"
+
 /* Number of IDT entries */
 #define NUMBER_OF_IDT_ENTRIES		(256)
 #define IDT_ENTRY_SIZE				(8)
@@ -27,7 +29,7 @@ typedef struct idt_interrupt_entry_rec {
 
 /* Interrupt handler */
 /* TODO - Add the stack parameter */
-typedef void (*interrupt_handler_t)(ushort_t interrupt_number);
+typedef void (*interrupt_handler_t)(ushort_t interrupt_number, registers_t * registers);
 
 /*
 Function name	: init_interrupts
@@ -73,8 +75,8 @@ Return			: TRUE - Success
 bool_t uninstall_interrupt_handler(ushort_t interrupt_number);
 
 /* Temp function for debug */
-void sys_call_handler(ushort_t interrupt_number);
-void timer_handler(ushort_t interrupt_number);
-void keyboard_handler(ushort_t interrupt_number);
+void sys_call_handler(ushort_t interrupt_number, registers_t * registers);
+void timer_handler(ushort_t irq, registers_t * registers);
+void keyboard_handler(ushort_t irq, registers_t * registers);
 
 #endif
