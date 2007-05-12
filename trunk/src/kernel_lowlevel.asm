@@ -103,6 +103,8 @@ IMPORT g_idt_handlers
 IMPORT idle
 IMPORT g_tss
 IMPORT g_process
+IMPORT g_tss_entry_index
+IMPORT set_tss_available
 IMPORT printf
 
 
@@ -219,40 +221,15 @@ disable_interrupts:
     
 ; Jump to user mode
 enter_user_mode:
-    ; Parameters: 0 - Pointer to function
-    ; Load SS
-    mov eax, (4<<3)
-    push eax
-    
-    ; Load ESP
-    mov eax, esp
-    push eax
-    
-    ; Load flags
-    pushf
-    
-    ; Load CS
-    mov eax, (3<<3)
-    push eax
-    
-    ; Load EIP of a function
-    mov eax, idle
-    push eax
-    
-    mov ax, (4<<3)
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    
-    iret
+    ; Jump to TSS
+    ;mov eax, [g_tss_entry_index]
+    ;shl eax, 3
+    call set_tss_available
+    jmp dword (5<<3):00h
 
 ; New interrupt handler
 common_interrupt_handler:     
     cli
-    
-    mov eax, 0BABEBABEh
-    mov ecx, 0BABEBABEh
-    mov edx, 0BABEBFBFh
 
     pusha
     push ds
@@ -298,23 +275,20 @@ common_interrupt_handler:
     pop ebx
     
 .continue_common_handler :
+    ; Set the tss values
+    mov eax, g_tss
+    mov ebx, esp
+    add ebx, 8
+    mov [eax+4], ebx
+    
     pop fs
     pop es
     pop ds
     popa
     
     ; Skip the interrupt number and error code
-    add esp, 8
-    
-    ; Set the tss values
-    push eax
-    mov eax, g_tss
-    mov ebx, esp
-    add ebx, 4
-    mov [eax+4], ebx
-    pop eax
-       
-    iret
+    add esp, 8  
+    iretd
 
 ; Enter into an infintie loop
 align 8

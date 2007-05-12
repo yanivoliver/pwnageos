@@ -110,10 +110,13 @@ int main(void)
 	__asm__("int $0x3");
 	__asm__("int $0xFF");
 	__asm__("int $0x7F");
-		
+	
 	/* Install timer handler */
 	install_irq_handler(0, schedule);
 	enable_irq(0);
+
+	/* Jmp to user mode */
+	enter_user_mode();
 
 	/* Enter into an infinite loop */
 	infinite_loop();

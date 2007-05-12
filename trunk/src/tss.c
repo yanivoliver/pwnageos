@@ -9,6 +9,7 @@ Date: 11/05/07
 #include "gdt.h"
 #include "memory.h"
 #include "screen.h"
+#include "schedule.h"
 
 /* Extern from kernel-lowlevel */
 extern void load_tr(ushort_t row);
@@ -44,7 +45,7 @@ bool_t init_tss()
 	/* Set tss entry */
 	set_entry_bounds(tss_entry_index, (ulong_t)&g_tss, sizeof(tss_t));
 	tss_entry->db_bit = 0;
-	tss_entry->dpl = KERNEL_PRIVILEGE;
+	tss_entry->dpl = USER_PRIVILEGE;
 	tss_entry->present = 1;
 	tss_entry->system = 0;
 	tss_entry->type = TSS_TYPE_AVAILABLE;
@@ -54,17 +55,23 @@ bool_t init_tss()
 	/* Set tss values */
 	memset(&g_tss, '\0', sizeof(tss_t));
 	g_tss.ss_0 = KERNEL_DS;
+	g_tss.esp_0 = 0x80000;
 	g_tss.ss_1 = KERNEL_DS;
-	g_tss.ss_1 = KERNEL_DS;
-	g_tss.es = KERNEL_DS;
-	g_tss.cs = KERNEL_DS;
-	g_tss.ds = KERNEL_DS;
-	g_tss.ss = KERNEL_DS;
-	g_tss.fs = KERNEL_DS;
-	g_tss.gs = KERNEL_DS;
+	g_tss.esp_1 = 0x80000;
+	g_tss.ss_2 = KERNEL_DS;
+	g_tss.esp_2 = 0x50000;
+	g_tss.es = USER_DS | 0x0003;
+	g_tss.cs = USER_CS | 0x0003;
+	g_tss.ds = USER_DS | 0x0003;
+	g_tss.ss = USER_DS | 0x0003;
+	g_tss.fs = USER_DS | 0x0003;
+	g_tss.gs = USER_DS | 0x0003;
+	g_tss.eip = idle;
+	g_tss.esp = 0x80000;
+	g_tss.eflags = 0x0202;
 
 	/* Load tss */
-	load_tr( segment_selector(KERNEL_PRIVILEGE, TRUE, tss_entry_index) );
+	load_tr( segment_selector(USER_PRIVILEGE, TRUE, tss_entry_index) );
 
 	/* Success */
 	return TRUE;
@@ -85,4 +92,9 @@ void set_tss_available()
 
 	/* Set the type */
 	tss_entry->type = TSS_TYPE_AVAILABLE;
+}
+
+void print_tss()
+{
+	printf("[%X%X%X%X]", g_tss.esp_0);
 }
