@@ -181,6 +181,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\schedule.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\screen.c"
 				>
 			</File>
@@ -216,6 +220,10 @@
 			</File>
 			<File
 				RelativePath=".\include\memory.h"
+				>
+			</File>
+			<File
+				RelativePath=".\schedule.h"
 				>
 			</File>
 			<File
