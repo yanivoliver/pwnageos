@@ -220,12 +220,14 @@ disable_interrupts:
     ret
     
 ; Jump to user mode
+; Deprecates
 enter_user_mode:
     ; Jump to TSS
     ;mov eax, [g_tss_entry_index]
     ;shl eax, 3
-    call set_tss_available
-    jmp dword (5<<3):00h
+    ;call set_tss_available
+    ;jmp dword (5<<3):00h
+    ret
 
 ; New interrupt handler
 common_interrupt_handler:     
@@ -276,6 +278,7 @@ common_interrupt_handler:
     
 .continue_common_handler :
     ; Set the tss values
+    ; TODO - ESP gets wrong here I think ...
     mov eax, g_tss
     mov ebx, esp
     add ebx, 8

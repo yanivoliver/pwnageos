@@ -116,7 +116,7 @@ int main(void)
 	enable_irq(0);
 
 	/* Jmp to user mode */
-	enter_user_mode();
+	//enter_user_mode();
 
 	/* Enter into an infinite loop */
 	infinite_loop();
