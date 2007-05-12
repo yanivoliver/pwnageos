@@ -15,7 +15,7 @@ INCLUDE = include/
 # $@ - Output
 # $? - Depends
 
-kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o irq.o memory.o gdt.o tss.o
+kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o irq.o memory.o gdt.o tss.o schedule.o
 	$(LD) -o $(OUTPUT)$@ --entry=0x1400 -Ttext 0x1400 --omagic -O 3 --oformat binary $?
 	make clean
 	make bootloader
@@ -39,6 +39,9 @@ gdt.o : $(SRC)gdt.c memory.o
 tss.o : $(SRC)tss.c memory.o gdt.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)tss.c
 	
+schedule.o : $(SRC)schedule.c
+	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)schedule.c
+
 interrupts.o : $(SRC)interrupts.c tss.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)interrupts.c
 	
@@ -48,7 +51,7 @@ io.o : $(SRC)io.c
 irq.o : $(SRC)irq.c tss.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)irq.c
 
-main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o
+main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o schedule.o
 	$(CC) -c -I$(INCLUDE) -o $@ $(SRC)main.c
 
 kernel_lowlevel.o : $(SRC)kernel_lowlevel.asm
