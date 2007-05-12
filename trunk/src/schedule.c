@@ -111,7 +111,7 @@ void idle()
 {
 	ulong_t i = 0;
 	for(;;) {
-		printf("%d,", i);
+		//printf("%d,", i);
 		i++;
 		//__asm__("cli");
 		//printf("!");
