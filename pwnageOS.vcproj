@@ -189,6 +189,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\string.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\tss.c"
 				>
 			</File>
@@ -228,6 +232,10 @@
 			</File>
 			<File
 				RelativePath=".\include\screen.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\string.h"
 				>
 			</File>
 			<File
