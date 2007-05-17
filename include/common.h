@@ -15,6 +15,7 @@ typedef unsigned long ulong_t;
 typedef unsigned char uchar_t;
 typedef unsigned int uint_t;
 typedef unsigned short bool_t;
+typedef unsigned int size_t;
 
 /* Define true and false values */
 #define TRUE	(1)

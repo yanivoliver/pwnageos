@@ -75,7 +75,7 @@ bool_t uninstall_interrupt_handler(ushort_t interrupt_number);
 
 /* Temp function for debug */
 void sys_call_handler(ushort_t interrupt_number, registers_t * registers);
-void keyboard_handler(ushort_t irq, registers_t * registers);
+void keyboard_handler_2(ushort_t irq, registers_t * registers);
 void gpf_handler(ushort_t interrupt_number, registers_t * registers);
 
 #endif
