@@ -8,6 +8,7 @@ Author: Shimi G.
 #include "irq.h"
 #include "io.h"
 #include "screen.h"
+#include "keyboard.h"
 #include "gdt.h"
 #include "tss.h"
 
@@ -16,7 +17,6 @@ extern void infinite_loop();
 
 extern void enter_user_mode();
 
-void install_keyboard();
 void idle();
 
 int main(void)
@@ -43,9 +43,8 @@ int main(void)
 		infinite_loop();
 	}
 
-	/* Install Keyboard handler */
-	/* TODO - Keyboard managment file */
-	install_keyboard();
+	/* Install Keyboard */
+	init_keyboard();
 
 	/* Print pre-init message */
 	printf("Initializing gdt table ... ");
@@ -110,10 +109,9 @@ int main(void)
 	__asm__("int $0x3");
 	__asm__("int $0xFF");
 	__asm__("int $0x7F");
-	
-	/* Install timer handler */
+
+	/* Re-install irq handler of the timer */
 	install_irq_handler(0, schedule);
-	enable_irq(0);
 
 	/* Jmp to user mode */
 	//enter_user_mode();
@@ -123,19 +121,4 @@ int main(void)
 
 	/* Return which doesnt ever supposed to happend*/
 	return 0;
-}
-
-void install_keyboard()
-{
-	/* Print message */
-	printf("Installing keyboard interrupt handler ... ");
-
-	/* Install */
-	install_irq_handler(1, keyboard_handler);
-	enable_irq(1);
-
-	/* Print done message */
-	console_foreground(0x4);
-	printf("[Done]\n");
-	console_foreground(0xF);
 }

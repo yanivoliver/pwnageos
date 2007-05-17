@@ -9,6 +9,8 @@ Schedule handling
 #include "tss.h"
 
 process_t * g_current_process = NULL;
+ulong_t g_current_process_index = 0;
+ulong_t g_base_stack = 0x50000;
 process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
 
 bool_t init_schedule()
@@ -53,6 +55,7 @@ bool_t init_schedule()
 void schedule(ushort_t irq, registers_t * registers)
 {
 	/* Declare variables */
+	ulong_t i = 0;
 
 	/* Save all registers to the current process */
 	g_current_process->registers.eax = registers->eax;
@@ -74,6 +77,12 @@ void schedule(ushort_t irq, registers_t * registers)
 	g_current_process->registers.ss_iret = registers->ss_iret;
 
 	/* Find a new process */
+	for (i = 0; i < NUMBER_OF_PROCESSES; i++) {
+		if (0 != g_process_list[i].process_id) {
+
+		}
+	}
+
 	if (&g_process_list[1] == g_current_process) {
 		/* Select the second process */
 		g_current_process = &g_process_list[2];
@@ -111,12 +120,7 @@ void idle()
 {
 	ulong_t i = 0;
 	for(;;) {
-		//printf("%d,", i);
 		i++;
-		//__asm__("cli");
-		//printf("!");
-		//print_tss();
-		//__asm__("sti");
 	}
 	
 }

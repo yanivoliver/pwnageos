@@ -173,6 +173,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\keyboard.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\main.c"
 				>
 			</File>
@@ -220,6 +224,10 @@
 			</File>
 			<File
 				RelativePath=".\include\irq.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\keyboard.h"
 				>
 			</File>
 			<File
