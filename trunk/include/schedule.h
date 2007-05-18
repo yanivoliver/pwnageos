@@ -35,6 +35,7 @@ typedef struct registers_rec {
 typedef struct process_rec {
 	ulong_t process_id;
 	registers_t registers;
+
 	struct process_rec * next_process;
 	/*
 	TODO - List of threads
