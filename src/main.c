@@ -9,15 +9,12 @@ Author: Shimi G.
 #include "io.h"
 #include "screen.h"
 #include "keyboard.h"
+#include "syscall.h"
 #include "gdt.h"
 #include "tss.h"
 
 /* Extern from kernel_low_level */
 extern void infinite_loop();
-
-extern void enter_user_mode();
-
-void idle();
 
 int main(void)
 {
@@ -42,9 +39,6 @@ int main(void)
 		/* Enter panic mode */
 		infinite_loop();
 	}
-
-	/* Install Keyboard */
-	init_keyboard();
 
 	/* Print pre-init message */
 	printf("Initializing gdt table ... ");
@@ -102,19 +96,53 @@ int main(void)
 		/* Enter panic mode */
 		infinite_loop();
 	}
+
+	/* Print pre-init message */
+	printf("Initializing syscall manager ... ");
+
+	/* Initialize interrupts */
+	if (TRUE == init_syscall()) {
+		/* Print post-init message*/
+		console_foreground(0x4);
+		printf("[Done]\n");
+		console_foreground(0xF);
+	} else {
+		/* Error */
+		console_foreground(0x3);
+		printf("[Error]\n");
+		console_foreground(0xF);
+
+		/* Enter panic mode */
+		infinite_loop();
+	}
+
+	/* Print pre-init message */
+	printf("Initializing keyboard ... ");
+
+	/* Initialize interrupts */
+	if (TRUE == init_keyboard()) {
+		/* Print post-init message*/
+		console_foreground(0x4);
+		printf("[Done]\n");
+		console_foreground(0xF);
+	} else {
+		/* Error */
+		console_foreground(0x3);
+		printf("[Error]\n");
+		console_foreground(0xF);
+
+		/* Enter panic mode */
+		infinite_loop();
+	}	
 	
 	__asm__("int $0x80");
 	__asm__("int $0x44");
 	__asm__("int $0x64");
 	__asm__("int $0x3");
-	__asm__("int $0xFF");
 	__asm__("int $0x7F");
 
 	/* Re-install irq handler of the timer */
 	install_irq_handler(0, schedule);
-
-	/* Jmp to user mode */
-	//enter_user_mode();
 
 	/* Enter into an infinite loop */
 	infinite_loop();

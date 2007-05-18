@@ -35,7 +35,7 @@ typedef struct registers_rec {
 typedef struct process_rec {
 	ulong_t process_id;
 	registers_t registers;
-
+	bool_t blocking;
 	struct process_rec * next_process;
 	/*
 	TODO - List of threads
@@ -58,6 +58,13 @@ Parameters		: irq - The irq of the timer
 void schedule(ushort_t irq, registers_t * registers);
 
 /*
+Function name	: get_current_process
+Purpose			: Get current process
+Parameters		: None
+*/
+process_t * get_current_process();
+
+/*
 Function name	: idle
 Purpose			: To do nothing :)
 Parameters		: None
@@ -71,6 +78,5 @@ Parameters		: None
 */
 void idle_second();
 
-void user_mode();
 
 #endif
