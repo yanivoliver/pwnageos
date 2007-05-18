@@ -69,8 +69,8 @@ align 16
 ICW1        equ 0x11        ; ICW1 - ICW4 needed, cascade mode, interval=8,
                             ; edge triggered. (I think interval is irrelevant
                             ; for x86.)
-ICW2_MASTER equ 0x20        ; put IRQs 0-7 at 0x20 (above Intel reserved ints)
-ICW2_SLAVE  equ 0x28        ; put IRQs 8-15 at 0x28
+ICW2_MASTER equ 0x30        ; put IRQs 0-7 at 0x20 (above Intel reserved ints)
+ICW2_SLAVE  equ 0x38        ; put IRQs 8-15 at 0x28
 ICW3_MASTER equ 0x04        ; IR2 connected to slave
 ICW3_SLAVE  equ 0x02        ; slave has id 2
 ICW4        equ 0x01        ; 8086 mode, no auto-EOI, non-buffered mode,
@@ -99,6 +99,8 @@ EXPORT common_interrupt_handler
 
 EXPORT g_first_external_interrupt
 
+EXPORT getch
+
 IMPORT g_idt_handlers
 IMPORT idle
 IMPORT g_tss
@@ -123,7 +125,7 @@ IMPORT printf
 ; rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
 ; which is used for the internal hardware interrupts as well. We just
 ; have to reprogram the 8259's, and it isn't fun.
-g_first_external_interrupt  db 020h
+g_first_external_interrupt  db 030h
 
 configure_pic:
     ; Initialize master and slave PIC!
@@ -298,6 +300,22 @@ align 8
 infinite_loop:
     nop
     jmp infinite_loop
+    
+; int getch();
+getch:
+    push ebp
+    mov ebp, esp
+    push ebx
+    
+    ;mov ah, 01h
+    int 021h
+    lea ebx, [ebp+8]
+    mov dword [ebx], 000000000h
+    mov byte [ebx], al
+    
+    pop ebx                  
+    pop ebp
+    ret
 
 
 ; Interrupt handlers table

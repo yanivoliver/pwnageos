@@ -64,22 +64,58 @@ void insert_keycode_to_queue(uchar_t scan_code, uchar_t control_keys)
 		} else {
 			/* If it isn't empty, the queue if full */
 			g_empty_node = KEYQUEUE_NO_EMPTY_NODES;
-			printf("FULL");
 		}
 	} else {
 		/* And if the queue isn't full */
 		/* Check if the next queue entry is empty and free to be used */
-		if (0 == key_buffer[g_empty_node + 1].keycode)
-		{
+		if (0 == key_buffer[g_empty_node + 1].keycode) {
 			g_empty_node++;
-		}
-		/* If it isn't empty, the queue is full */
-		else
-		{
+		} else {
+			/* If it isn't empty, the queue is full */
 			g_empty_node = KEYQUEUE_NO_EMPTY_NODES;
-			printf("FULL");
 		}
 	}
+}
+
+uchar_t get_char_from_queue()
+{
+	uchar_t return_char = 0;
+
+	/* Check if its a new queue, if so, no keys are in the buffer yet. Also check if the current keycode
+	   is empty, which means we don't want to go forward in the queue for the next call to the funciton. */
+	if (KEYQUEUE_NEW_QUEUE == g_current_key || 0 == key_buffer[g_current_key].keycode) {
+		return 0;
+	}
+
+	/* Check if shift is on */
+	if (CONTROL_SHIFT == CONTROL_SHIFT && key_buffer[g_current_key].control_keys) {
+		/* Return the shifted char */
+		return_char = g_keyboard_map_shift[key_buffer[g_current_key].keycode];
+	} else {
+		/* Otherwise */
+		/* Return the non shifted char */
+		return_char = g_keyboard_map[key_buffer[g_current_key].keycode];
+	}
+
+	/* Zero out the current queue entry */
+	key_buffer[g_current_key].keycode = 0;
+	key_buffer[g_current_key].control_keys = 0;
+
+	/* Check if the queue is currently full, so we can point the queue pointer to this new empty node to use */
+	if (KEYQUEUE_NO_EMPTY_NODES == g_empty_node) {
+		g_empty_node = g_current_key;
+	}
+
+	/* Check if this is the end of the queue */
+	if (KEY_QUEUE_SIZE == g_current_key) {
+		/* If it is, reset to the first queue entry */
+		g_current_key = 0;
+	} else {
+		/* Otherwise increment the queue pointer */
+		g_current_key++;
+	}
+
+	return return_char;
 }
 
 void keyboard_handler(ushort_t irq, registers_t * registers)
@@ -114,9 +150,11 @@ void keyboard_handler(ushort_t irq, registers_t * registers)
 	insert_keycode_to_queue(scan_code, control_keys);
 }
 
-void init_keyboard()
+bool_t init_keyboard()
 {
 	/* Install the keyboard */
 	install_irq_handler(1, keyboard_handler);
 	enable_irq(1);
+
+	return TRUE;
 }

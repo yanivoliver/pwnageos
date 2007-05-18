@@ -3,7 +3,8 @@ Keyboard include
 Author: Yaniv Oliver
 */
 
-#include "schedule.h"
+#ifndef HEADER_PWNAGE_KEYBOARD
+#define HEADER_PWNAGE_KEYBOARD
 
 #define SHIFT_LEFT					(0x2A)
 #define SHIFT_RIGHT					(0x36)
@@ -19,4 +20,7 @@ Function name	: init_keyboard
 Purpose			: Initialize keyboard
 Parameters		: None
 */
-void init_keyboard();
+bool_t init_keyboard();
+
+#endif
+

@@ -65,6 +65,16 @@ Return			: TRUE - Success
 bool_t install_interrupt_handler(ushort_t interrupt_number, interrupt_handler_t handler);
 
 /*
+Function name	: set_interrupt_dpl
+Purpose			: Sets the dpl of an interrupt
+Parameters		: interrupt_number - The interrupt number
+				  dpl - Function pointer of an handler
+Return			: TRUE - Success
+				  FALSE - Failure
+*/
+bool_t set_interrupt_dpl(ushort_t interrupt_number, ushort_t dpl);
+
+/*
 Function name	: uninstall_interrupt_handler
 Purpose			: Uninstall a high-level handler from an interrupt
 Parameters		: interrupt_number - The interrupt number
@@ -74,8 +84,6 @@ Return			: TRUE - Success
 bool_t uninstall_interrupt_handler(ushort_t interrupt_number);
 
 /* Temp function for debug */
-void sys_call_handler(ushort_t interrupt_number, registers_t * registers);
-void keyboard_handler_2(ushort_t irq, registers_t * registers);
 void gpf_handler(ushort_t interrupt_number, registers_t * registers);
 
 #endif

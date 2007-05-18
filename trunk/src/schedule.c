@@ -17,6 +17,8 @@ process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
 
 ulong_t create_process(ulong_t entry_point);
 
+extern int getch();
+
 bool_t init_schedule()
 {
 	/* Declare variables */
@@ -35,23 +37,17 @@ bool_t init_schedule()
 	/* Process 3 */
 	create_process(idle_second);
 
-	/* Process 1*/
-	create_process(idle);
-
-	/* Process 3 */
-	create_process(idle_second);
-
-	/* Process 1*/
-	create_process(idle);
-
-	/* Process 3 */
-	create_process(idle_second);
-
 	/* Set the current process to the empty first entry */
 	g_current_process = &g_process_list[0];
 
 	/* Return success */
 	return TRUE;
+}
+
+process_t * get_current_process()
+{
+	/* Return current process */
+	return g_current_process;
 }
 
 /* This function is an abstract,
@@ -97,6 +93,7 @@ ulong_t create_process(ulong_t entry_point)
 	process->process_id = g_process_id;
 
 	/* Set information */
+	process->blocking = FALSE;
 	process->registers.ds = USER_DS;
 	process->registers.es = USER_DS;
 	process->registers.fs = USER_DS;
@@ -118,6 +115,8 @@ void schedule(ushort_t irq, registers_t * registers)
 {
 	/* Declare variables */
 	process_t * process = NULL;
+	bool_t process_found = FALSE;
+	uchar_t input = 0;
 
 	/* Save all registers to the current process */
 	g_current_process->registers.eax = registers->eax;
@@ -138,24 +137,39 @@ void schedule(ushort_t irq, registers_t * registers)
 	g_current_process->registers.esp_iret = registers->esp_iret;
 	g_current_process->registers.ss_iret = registers->ss_iret;
 
-	/* Find a new process */
-	process = g_current_process->next_process;
+	while (TRUE != process_found) {
+		/* Find a new process */
+		process = g_current_process->next_process;
 
-	/* Check that its not the end of the list */
-	if (NULL == process) {
-		process = g_head_process;
+		/* Check that its not the end of the list */
+		if (NULL == process) {
+			process = g_head_process;
+		}
+
+		/* Set the new process */
+		g_current_process = process;
+
+		/* Check blocking mode */
+		/* TODO: Call the helper function who blocked this thread, so it could be un-locked */
+		if (TRUE == g_current_process->blocking) {
+			/* Try to get character */
+			input = get_char_from_queue();
+			if (0 == input) {
+				/* Stay in blocking mode, look for a new thread */
+				process_found = FALSE;
+			} else {
+				/* Leave blocking mode, stay with the thread */
+				g_current_process->blocking = FALSE;
+				process_found = TRUE;
+
+				/* Set the return value inside AL */
+				g_current_process->registers.eax = input;
+			}
+		} else {
+			/* We have found the process */
+			process_found = TRUE;
+		}
 	}
-
-	/* Set the new process */
-	g_current_process = process;
-
-	//if (&g_process_list[1] == g_current_process) {
-		/* Select the second process */
-	//	g_current_process = &g_process_list[2];
-	//} else {
-		/* Select the first process */
-	//	g_current_process = &g_process_list[1];
-	//}
 
 	/* Load new process's registers */
 	registers->eip_iret = g_current_process->registers.eip_iret;
@@ -184,29 +198,17 @@ void schedule(ushort_t irq, registers_t * registers)
 
 void idle()
 {
-	ulong_t i = 0;
+	/* Do really nothing */
 	for(;;) {
-		i++;
-		if (0 == i % 99999) {
-			printf("A");
-		}
-	}	
-}
-
-void user_mode()
-{
-	for(;;) {
-		__asm__("movl 0x2345, %eax");
 	}	
 }
 
 void idle_second()
 {
 	ulong_t i = 0;
+	uchar_t input = 0;
 	for(;;) {
 		i++;
-		if (0 == i % 99999) {
-			printf("B");
-		}
+		printf("%c", getch());
 	}	
 }

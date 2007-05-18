@@ -15,7 +15,7 @@ INCLUDE = include/
 # $@ - Output
 # $? - Depends
 
-kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o
+kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o syscall.o screen.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o
 	$(LD) -o $(OUTPUT)$@ --entry=0x1400 -Ttext 0x1400 --omagic -O 3 --oformat binary $?
 	make clean
 	make bootloader
@@ -56,8 +56,11 @@ irq.o : $(SRC)irq.c tss.o
 	
 keyboard.o : $(SRC)keyboard.c irq.o interrupts.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)keyboard.c
+	
+syscall.o : $(SRC)syscall.c interrupts.o schedule.o
+	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)syscall.c
 
-main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o
+main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o syscall.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)main.c
 
 kernel_lowlevel.o : $(SRC)kernel_lowlevel.asm
