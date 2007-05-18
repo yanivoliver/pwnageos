@@ -281,7 +281,7 @@ common_interrupt_handler:
     ; TODO - ESP gets wrong here I think ...
     mov eax, g_tss
     mov ebx, esp
-    add ebx, 8
+    add ebx, 048h
     mov [eax+4], ebx
     
     pop fs
@@ -290,7 +290,7 @@ common_interrupt_handler:
     popa
     
     ; Skip the interrupt number and error code
-    add esp, 8  
+    add esp, 8
     iretd
 
 ; Enter into an infintie loop
