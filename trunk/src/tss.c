@@ -9,7 +9,6 @@ Date: 11/05/07
 #include "gdt.h"
 #include "memory.h"
 #include "screen.h"
-#include "schedule.h"
 
 /* Extern from kernel-lowlevel */
 extern void load_tr(ushort_t row);
@@ -56,15 +55,6 @@ bool_t init_tss()
 	g_tss.ss_0 = KERNEL_DS;
 	g_tss.ss_1 = KERNEL_DS;
 	g_tss.ss_2 = KERNEL_DS;
-	g_tss.es = USER_DS;
-	g_tss.cs = USER_CS;
-	g_tss.ds = USER_DS;
-	g_tss.ss = USER_DS;
-	g_tss.fs = USER_DS;
-	g_tss.gs = USER_DS;
-	g_tss.eip = idle;
-	g_tss.esp = 0x80000;
-	g_tss.eflags = 0x0202;
 
 	/* Load tss */
 	load_tr( segment_selector(USER_PRIVILEGE, TRUE, tss_entry_index) );
@@ -88,9 +78,4 @@ void set_tss_available()
 
 	/* Set the type */
 	tss_entry->type = TSS_TYPE_AVAILABLE;
-}
-
-void print_tss()
-{
-	printf("[%X%X%X%X]", g_tss.esp_0);
 }

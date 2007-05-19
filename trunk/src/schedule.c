@@ -6,6 +6,7 @@ Schedule handling
 #include "common.h"
 #include "memory.h"
 #include "schedule.h"
+#include "syscall.h"
 #include "tss.h"
 
 process_t * g_current_process = NULL;
@@ -18,6 +19,7 @@ process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
 ulong_t create_process(ulong_t entry_point);
 
 extern int getch();
+extern int putch(int c);
 
 bool_t init_schedule()
 {
@@ -48,6 +50,120 @@ process_t * get_current_process()
 {
 	/* Return current process */
 	return g_current_process;
+}
+
+process_t * get_head_process()
+{
+	/* Return head process */
+	return g_head_process;
+}
+
+process_t * get_last_process()
+{
+	/* Declare variables */
+	ulong_t i = 0;
+	process_t * process = NULL;
+
+	/* Set head process */
+	process = get_head_process();
+
+	/* Iterate all processes */
+	while (NULL != process->next_process) {
+		/* Get next process */
+		process = process->next_process;
+	}
+
+	/* Return the process */
+	return process;
+}
+
+process_t * get_process_by_console(console_t * console)
+{
+	/* Declare variables */
+	ulong_t i = 0;
+	process_t * process = NULL;
+	
+	/* Check references */
+	if (NULL == console) {
+		return NULL;
+	}
+
+	/* Set head process */
+	process = get_head_process();
+
+	/* Iterate all processes */
+	do {
+		/* Check screen */
+		if (console == &process->console) {
+			/* Found console */
+			return process;
+		}
+
+		/* Set next process */
+		process = process->next_process;		
+	} while (NULL != process);
+
+	/* Process not found */
+	return NULL;
+}
+
+process_t * get_process_by_id(ulong_t process_id)
+{
+	/* Declare variables */
+	ulong_t i = 0;
+	process_t * process = NULL;
+
+	/* Set head process */
+	process = get_head_process();
+
+	/* Iterate all processes */
+	do {
+		/* Check screen */
+		if (process_id == process->process_id) {
+			/* Found console */
+			return process;
+		}
+
+		/* Set next process */
+		process = process->next_process;		
+	} while (NULL != process);
+
+	/* Process not found */
+	return NULL;
+}
+
+process_t * get_prev_process(process_t * process_seek)
+{
+	/* Declare variables */
+	ulong_t i = 0;
+	process_t * process = NULL;
+
+	/* Check references */
+	if (NULL == process_seek) {
+		return NULL;
+	}
+
+	/* Set head process */
+	process = get_head_process();
+
+	/* Check head */
+	if (process_seek == process->next_process) {
+		return process;
+	}
+
+	/* Iterate all processes */
+	while (NULL != process->next_process) {
+		/* Check the process */
+		if (process_seek == process->next_process) {
+			return process;
+		}
+
+		/* Get next process */
+		process = process->next_process;
+	}
+
+	/* Return the process */
+	return NULL;
 }
 
 /* This function is an abstract,
@@ -94,14 +210,26 @@ ulong_t create_process(ulong_t entry_point)
 
 	/* Set information */
 	process->blocking = FALSE;
+	process->blocking_syscall = NULL;
 	process->registers.ds = USER_DS;
 	process->registers.es = USER_DS;
 	process->registers.fs = USER_DS;
 	process->registers.ss_iret = USER_DS;
-	process->registers.esp_iret = 0x50000 + (0x1000 * process->process_id);
+	process->registers.esp_iret = 0x90000 + (0x1000 * process->process_id);
 	process->registers.cs_iret = USER_CS;
 	process->registers.eip_iret = entry_point;
 	process->registers.eflags_iret = 0x0202;
+
+	/* Set console */
+	process->console.row = 0;
+	process->console.column = 0;
+	process->console.color = SCREEN_DEFAULT_COLOR;
+	process->console.foreground = SCREEN_FOREGROUND_COLOR;
+	process->console.background = SCREEN_BACKGROUND_COLOR;
+
+	set_working_console(&process->console);
+	clrscr();
+	set_working_console(NULL);
 
 	/* Connect the process */
 	process->next_process = g_head_process;
@@ -152,18 +280,13 @@ void schedule(ushort_t irq, registers_t * registers)
 		/* Check blocking mode */
 		/* TODO: Call the helper function who blocked this thread, so it could be un-locked */
 		if (TRUE == g_current_process->blocking) {
-			/* Try to get character */
-			input = get_char_from_queue();
-			if (0 == input) {
-				/* Stay in blocking mode, look for a new thread */
+			/* Call the recall handler of the syscall */
+			if (TRUE != g_current_process->blocking_syscall->recall_handler(&g_current_process->registers, g_current_process->blocking_syscall)) {
+				/* Syscall is not ready */
 				process_found = FALSE;
 			} else {
-				/* Leave blocking mode, stay with the thread */
-				g_current_process->blocking = FALSE;
+				/* Syscall is done */
 				process_found = TRUE;
-
-				/* Set the return value inside AL */
-				g_current_process->registers.eax = input;
 			}
 		} else {
 			/* We have found the process */
@@ -206,9 +329,9 @@ void idle()
 void idle_second()
 {
 	ulong_t i = 0;
-	uchar_t input = 0;
+	int ch = 0;
 	for(;;) {
 		i++;
-		printf("%c", getch());
+		putch(getch());
 	}	
 }

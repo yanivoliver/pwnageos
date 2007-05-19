@@ -7,39 +7,19 @@ Schedule handling
 #ifndef HEADER_PWNAGE_SCHEDULE
 #define HEADER_PWNAGE_SCHEDULE
 
-#define NUMBER_OF_PROCESSES	(10)
+#include "syscall.h"
+#include "screen.h"
 
-/* Registers */
-typedef struct registers_rec {
-	ulong_t fs;
-	ulong_t es;
-	ulong_t ds;
-	ulong_t edi;
-	ulong_t esi;
-	ulong_t ebp;
-	ulong_t esp;
-	ulong_t ebx;
-	ulong_t edx;
-	ulong_t ecx;
-	ulong_t eax;
-	ulong_t interrupt_number;
-	ulong_t error_code;
-	ulong_t eip_iret;
-	ulong_t cs_iret;
-	ulong_t eflags_iret;
-	ulong_t esp_iret;
-	ulong_t ss_iret;
-} registers_t;
+#define NUMBER_OF_PROCESSES	(10)
 
 /* Process*/
 typedef struct process_rec {
 	ulong_t process_id;
 	registers_t registers;
 	bool_t blocking;
+	syscall_entry_t * blocking_syscall;
+	console_t console;
 	struct process_rec * next_process;
-	/*
-	TODO - List of threads
-	*/
 } process_t;
 
 /*
@@ -63,6 +43,44 @@ Purpose			: Get current process
 Parameters		: None
 */
 process_t * get_current_process();
+
+/*
+Function name	: get_head_process
+Purpose			: Get head process
+Parameters		: None
+*/
+process_t * get_head_process();
+
+/*
+Function name	: get_last_process
+Purpose			: Get last process
+Parameters		: None
+*/
+process_t * get_last_process();
+
+/*
+Function name	: get_process_by_console
+Purpose			: Find a process by console value
+Parameters		: console - The console to look for
+Returns			: Success - Process, Failure - NULL
+*/
+process_t * get_process_by_console(console_t * console);
+
+/*
+Function name	: get_process_by_id
+Purpose			: Find a process by its id
+Parameters		: process_id - The process id to look for
+Returns			: Success - Process, Failure - NULL
+*/
+process_t * get_process_by_id(ulong_t process_id);
+
+/*
+Function name	: get_prev_process
+Purpose			: Finds the previous process in the list
+Parameters		: process - The process to look for
+Returns			: Success - Process, Failure - NULL
+*/
+process_t * get_prev_process(process_t * process_seek);
 
 /*
 Function name	: idle

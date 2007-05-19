@@ -6,13 +6,18 @@ Author: Yaniv Oliver (and some Shimi :P)
 #include "common.h"
 #include "schedule.h"
 #include "keyboard.h"
+#include "memory.h"
+#include "screen.h"
 #include "interrupts.h"
+#include "syscall.h"
 #include "irq.h"
 
 #define KEY_RELEASED(KEY)			((KEY) | 0x80)
 #define KEY_QUEUE_SIZE				(10) /* Defines the size of the key queue */
 #define KEYQUEUE_NEW_QUEUE			(-1)
 #define KEYQUEUE_NO_EMPTY_NODES		(-2)
+#define CONSOLE_BACKWARD_TRIGGER	(59)
+#define CONSOLE_FOREWARD_TRIGGER	(60)
 
 /* Holds a pressed key entry. */
 typedef struct
@@ -24,12 +29,12 @@ typedef struct
 uchar_t g_keyboard_map[]			= {	0, 0, '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 0, 0,
 								'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '[', ']', 0, 0,
 								'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';', '\'', 0, 0, 0,
-								'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'};
+								'z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/', 0, 0, 0, ' '};
 
 uchar_t g_keyboard_map_shift[]	= {	0, 0, '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '_', '+', 0, 0,
 								'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', 0, 0,
 								'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ':', '"', 0, 0, 0,
-								'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?'};
+								'Z', 'X', 'C', 'V', 'B', 'N', 'M', '<', '>', '?', 0, 0, 0, ' '};
 
 
 /* Create the key queue */
@@ -45,26 +50,18 @@ void insert_keycode_to_queue(uchar_t scan_code, uchar_t control_keys)
 	if (KEYQUEUE_NO_EMPTY_NODES == g_empty_node) {
 		return;
 	}
-	
+
 	/* Insert the key pressed into an empty entry */
 	key_buffer[g_empty_node].keycode = scan_code;
 	key_buffer[g_empty_node].control_keys = control_keys;
 
 	/* If the current key is -1, it means the queue is still empty, so make the current key point to us */
-	if (KEYQUEUE_NEW_QUEUE == g_current_key) {
-		g_current_key = g_empty_node;
-	}
+	g_current_key = g_empty_node;
 
 	/* Check if the queue is full (we reached the end of the queue) */
 	if (KEY_QUEUE_SIZE == g_empty_node) {
-		/* Check if the first position in the queue is empty */
-		if (0 == key_buffer[0].keycode) {
-			/* If it is, make the next empty node point there */
-			g_empty_node = 0;
-		} else {
-			/* If it isn't empty, the queue if full */
-			g_empty_node = KEYQUEUE_NO_EMPTY_NODES;
-		}
+		/* If it isn't empty, the queue if full */
+		g_empty_node = KEYQUEUE_NO_EMPTY_NODES;
 	} else {
 		/* And if the queue isn't full */
 		/* Check if the next queue entry is empty and free to be used */
@@ -83,8 +80,8 @@ uchar_t get_char_from_queue()
 
 	/* Check if its a new queue, if so, no keys are in the buffer yet. Also check if the current keycode
 	   is empty, which means we don't want to go forward in the queue for the next call to the funciton. */
-	if (KEYQUEUE_NEW_QUEUE == g_current_key || 0 == key_buffer[g_current_key].keycode) {
-		return 0;
+	if (KEYQUEUE_NEW_QUEUE == g_current_key) {
+		return return_char;
 	}
 
 	/* Check if shift is on */
@@ -101,20 +98,17 @@ uchar_t get_char_from_queue()
 	key_buffer[g_current_key].keycode = 0;
 	key_buffer[g_current_key].control_keys = 0;
 
-	/* Check if the queue is currently full, so we can point the queue pointer to this new empty node to use */
-	if (KEYQUEUE_NO_EMPTY_NODES == g_empty_node) {
-		g_empty_node = g_current_key;
-	}
-
-	/* Check if this is the end of the queue */
-	if (KEY_QUEUE_SIZE == g_current_key) {
-		/* If it is, reset to the first queue entry */
-		g_current_key = 0;
+	/* Check if we are at the first character */
+	if (0 == g_current_key) {
+		/* Set the first character as the empty one */
+		g_current_key = KEYQUEUE_NEW_QUEUE;
+		g_empty_node = 0;
 	} else {
-		/* Otherwise increment the queue pointer */
-		g_current_key++;
+		/* Set the empty node to us and set the new current key */
+		g_current_key--;
+		g_empty_node--;
 	}
-
+	
 	return return_char;
 }
 
@@ -146,8 +140,80 @@ void keyboard_handler(ushort_t irq, registers_t * registers)
 		return;
 	}
 
+	/* Check if we are trying to make a console switch */
+	switch (scan_code) {
+		case CONSOLE_BACKWARD_TRIGGER:
+			show_prev_console();
+			return;
+			break;
+		case CONSOLE_FOREWARD_TRIGGER:
+			show_next_console();
+			return;
+			break;
+	}
+
 	/* Insert the key pressed into the queue */
 	insert_keycode_to_queue(scan_code, control_keys);
+}
+
+bool_t syscall_char_read_recall(registers_t * registers, struct syscall_entry_rec * syscall_entry)
+{
+	/* Declare variables */
+	uchar_t input = 0;
+
+	/* Get character */
+	input = get_char_from_queue();
+
+	/* Check input */
+	if (0 == input) {
+		/* No valid input */
+		return FALSE;
+	} else {
+		/* Found character, set the return value inside eax */
+		registers->eax = input;
+
+		/* Return success*/
+		return TRUE;
+	}
+}
+
+bool_t syscall_char_read(registers_t * registers, struct syscall_entry_rec * syscall_entry)
+{
+	/* Clear the input buffer */
+	memset(key_buffer, '\0', KEY_QUEUE_SIZE * sizeof(keyboard_queue_entry));
+	g_current_key = KEYQUEUE_NEW_QUEUE;
+	g_empty_node = 0;
+
+	/* Call the recall function */
+	return syscall_entry->recall_handler(registers, syscall_entry);
+}
+
+bool_t syscall_char_write(registers_t * registers, struct syscall_entry_rec * syscall_entry)
+{
+	/* Declare variables */
+	uchar_t output = 0;
+	process_t * process = NULL;
+
+	/* Get outut char from DL */
+	output = registers->edx & 0xFF;
+
+	/* Check if its a tab, and set the return value of the last printed character */
+	if (0x09 == output) {
+		registers->eax &= 0xFFFFFF00;
+		registers->eax |= 0x00000020;
+	} else {
+		registers->eax &= 0xFFFFFF00;
+		registers->eax |= output;
+	}
+
+	/* Print the character */
+	process = get_current_process();
+	set_working_console(&process->console);
+	printf("%c", output);
+	set_working_console(NULL);
+
+	/* Return success */
+	return TRUE;
 }
 
 bool_t init_keyboard()
@@ -155,6 +221,13 @@ bool_t init_keyboard()
 	/* Install the keyboard */
 	install_irq_handler(1, keyboard_handler);
 	enable_irq(1);
+
+	/* Make all entries empty */
+	memset(key_buffer, '\0', sizeof(keyboard_queue_entry) * KEY_QUEUE_SIZE);
+
+	/* Registers syscall */
+	install_syscall_handler(0x08, syscall_char_read, TRUE, syscall_char_read_recall);
+	install_syscall_handler(0x02, syscall_char_write, FALSE, NULL);
 
 	return TRUE;
 }

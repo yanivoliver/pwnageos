@@ -59,7 +59,5 @@ Parameters		: None
 */
 void set_tss_available();
 
-void print_tss();
-
 #endif
 

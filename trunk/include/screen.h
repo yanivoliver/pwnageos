@@ -19,6 +19,55 @@ Author: Shimi G.
 
 #define SCREEN_SEGMENT			(0xB8000)
 
+typedef struct console_rec {
+	ushort_t row;
+	ushort_t column;
+	ushort_t color;
+	ushort_t foreground;
+	ushort_t background;
+	uchar_t screen[SCREEN_ROWS*SCREEN_COLUMNS*2];
+} console_t;
+
+/*
+Function name	: init_screen
+Purpose			: Initialize screen
+Parameters		: None
+Returns			: TRUE - Success, FALSE - Failure
+*/
+bool_t init_screen();
+
+/*
+Function name	: set_working_console
+Purpose			: Set working console which will receive all writings
+Parameters		: console - The console
+Returns			: Previous console
+*/
+console_t * set_working_console(console_t * console);
+
+/*
+Function name	: show_next_console
+Purpose			: Show the next console
+Parameters		: None
+Returns			: None
+*/
+void show_next_console();
+
+/*
+Function name	: show_prev_console
+Purpose			: Show the next console
+Parameters		: None
+Returns			: None
+*/
+void show_prev_console();
+
+/*
+Function name	: show_console
+Purpose			: Show the default console
+Parameters		: console - The console to show
+Returns			: None
+*/
+void show_console(console_t * console);
+
 /*
 Function name	: clrscr
 Purpose			: Clear screen

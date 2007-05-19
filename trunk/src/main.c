@@ -18,6 +18,21 @@ extern void infinite_loop();
 
 int main(void)
 {
+	/* Declare variables */
+	ulong_t idle_process_id = 0;
+
+	/* Initialize screen and scheduler without any messages */
+	idle_process_id = init_schedule();
+	if (0 == idle_process_id) {
+		/* Error initializing scheduler */
+		infinite_loop();
+	}
+
+	if (TRUE != init_screen(idle_process_id)) {
+		/* Error initializing screen */
+		infinite_loop();
+	}
+
 	/* Clear screen */
 	clrscr();
 
@@ -79,25 +94,6 @@ int main(void)
 	}
 
 	/* Print pre-init message */
-	printf("Initializing scheduler ... ");
-
-	/* Initialize interrupts */
-	if (TRUE == init_schedule()) {
-		/* Print post-init message*/
-		console_foreground(0x4);
-		printf("[Done]\n");
-		console_foreground(0xF);
-	} else {
-		/* Error */
-		console_foreground(0x3);
-		printf("[Error]\n");
-		console_foreground(0xF);
-
-		/* Enter panic mode */
-		infinite_loop();
-	}
-
-	/* Print pre-init message */
 	printf("Initializing syscall manager ... ");
 
 	/* Initialize interrupts */
@@ -133,7 +129,7 @@ int main(void)
 
 		/* Enter panic mode */
 		infinite_loop();
-	}	
+	}
 	
 	__asm__("int $0x80");
 	__asm__("int $0x44");

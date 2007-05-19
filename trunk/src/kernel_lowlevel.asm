@@ -100,6 +100,7 @@ EXPORT common_interrupt_handler
 EXPORT g_first_external_interrupt
 
 EXPORT getch
+EXPORT putch
 
 IMPORT g_idt_handlers
 IMPORT idle
@@ -307,13 +308,28 @@ getch:
     mov ebp, esp
     push ebx
     
-    ;mov ah, 01h
+    mov ah, 008h
     int 021h
-    lea ebx, [ebp+8]
-    mov dword [ebx], 000000000h
-    mov byte [ebx], al
+    and eax, 0000000FFh
+    
+    ;lea ebx, [ebp+8]
+    ;mov dword [ebx], 000000000h
+    ;mov byte [ebx], al
     
     pop ebx                  
+    pop ebp
+    ret
+    
+ ; int putch(int c);
+putch:
+    push ebp
+    mov ebp, esp
+    
+    mov ah, 002h
+    mov dl, byte [ebp+8]
+    int 021h
+    and eax, 0000000FFh
+    
     pop ebp
     ret
 
