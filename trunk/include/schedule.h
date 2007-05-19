@@ -19,15 +19,24 @@ typedef struct process_rec {
 	bool_t blocking;
 	syscall_entry_t * blocking_syscall;
 	console_t console;
+	uchar_t name[STRING_BUFFER];
 	struct process_rec * next_process;
 } process_t;
+
+/*
+Function name	: create_process
+Purpose			: Create a signle-threaded process
+Parameters		: entry_points - Address to the main function
+				  name - Process name, can be set to NULL
+*/
+ulong_t create_process(ulong_t entry_point, uchar_t * name);
 
 /*
 Function name	: init_schedule
 Purpose			: Initialize scheduler
 Parameters		: None
 */
-bool_t init_schedule();
+ulong_t init_schedule();
 
 /*
 Function name	: schedule
@@ -95,6 +104,7 @@ Purpose			: To do even more nothing :)
 Parameters		: None
 */
 void idle_second();
+void idle_third();
 
 
 #endif

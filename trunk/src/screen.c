@@ -6,7 +6,12 @@ Author: Shimi G.
 #include "schedule.h"
 #include "io.h"
 #include "memory.h"
+#include "string.h"
 #include "screen.h"
+
+#define HEADER_BACKGROUND	(0x4)
+#define HEADER_FOREGROUND	(0xF)
+#define HEADER_SEPERATOR	(0xAF)
 
 console_t * g_default_console = NULL;	/* Default console if nothing else is found, should be pointing to idle console */
 console_t * g_working_console = NULL;	/* The when that all writing operations effect */
@@ -108,11 +113,11 @@ bool_t init_screen(ulong_t process_id)
 	g_viewing_console = &process->console;
 	g_working_console = &process->console;
 
-	/* Set as viewing console */
-	//set_working_console(&process->console);
+	/* Draw header */
+	//draw_header(process->name);
 
-	/* Show console */
-	//show_console(&process->console);
+	/* Invalidate */
+	//screen_update(TRUE);
 
 	/* Return success*/
 	return TRUE;
@@ -168,12 +173,36 @@ void clrscr()
 
 	/* Set cursor position to 0,0 */
 	out(0x3D4, 14);
-	out(0x3D5, 0);
+	out(0x3D5, -1);
 	out(0x3D4, 15);
-	out(0x3D5, 0);
+	out(0x3D5, -1);
 
 	/* Update the screen */
 	screen_update(FALSE);
+}
+
+void draw_header(uchar_t * name)
+{
+	/* Declare variables */
+	//process_t * process = NULL;
+	ulong_t i = 0;
+	ulong_t offset_count = 0;
+
+	/* Get current process */
+	//process = get_current_process();
+
+	/* Color the first line */
+	for (i = 1; i < SCREEN_COLUMNS*2; i+=2) {
+		g_working_console->screen[i] = HEADER_BACKGROUND << 4 | HEADER_FOREGROUND;
+	}
+
+	/* Get process name */
+	offset_count = 4;
+	g_working_console->screen[2] = HEADER_SEPERATOR;
+	for (i = 0; i < strlen(name); i++) {
+		g_working_console->screen[offset_count] = name[i];
+		offset_count += 2;
+	}
 }
 
 
@@ -355,7 +384,8 @@ void calculate_screen_bounds()
 	ushort_t x = 0;
 
 	/* Set screen memory */
-	video_memory = (uchar_t *)SCREEN_SEGMENT;
+	//video_memory = (uchar_t *)SCREEN_SEGMENT;
+	video_memory = g_working_console->screen;
 
 	/* Check column bound */
 	if (SCREEN_COLUMNS <= g_working_console->column) {
@@ -367,7 +397,7 @@ void calculate_screen_bounds()
 	if (SCREEN_ROWS <= g_working_console->row) {
 		/* Copy all rows to the rows which are below */
 		/* Iterate all rows except the first one which will be overwritten */
-		for (i = 1; i < SCREEN_ROWS; i++) {
+		for (i = 1+g_working_console->row_header; i < SCREEN_ROWS; i++) {
 			/* Iterate all columns */
 			/* We have two bytes per column */
 			for (x = 0; x < SCREEN_COLUMNS*2; x++) {

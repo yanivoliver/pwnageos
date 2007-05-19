@@ -143,11 +143,11 @@ void keyboard_handler(ushort_t irq, registers_t * registers)
 	/* Check if we are trying to make a console switch */
 	switch (scan_code) {
 		case CONSOLE_BACKWARD_TRIGGER:
-			show_prev_console();
+			show_next_console();
 			return;
 			break;
 		case CONSOLE_FOREWARD_TRIGGER:
-			show_next_console();
+			show_prev_console();
 			return;
 			break;
 	}

@@ -21,6 +21,7 @@ Author: Shimi G.
 
 typedef struct console_rec {
 	ushort_t row;
+	ushort_t row_header;
 	ushort_t column;
 	ushort_t color;
 	ushort_t foreground;
@@ -74,6 +75,13 @@ Purpose			: Clear screen
 Parameters		: None
 */
 void clrscr();
+
+/*
+Function name	: draw_header
+Purpose			: Draws process header
+Parameters		: None
+*/
+void draw_header(uchar_t * name);
 
 /*
 Function name	: printf
