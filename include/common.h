@@ -32,6 +32,27 @@ typedef char * va_list;
 #define USER_CS		((3<<3)|(0x0003))
 #define USER_DS		((4<<3)|(0x0003))
 
+/* Registers */
+typedef struct registers_rec {
+	ulong_t fs;
+	ulong_t es;
+	ulong_t ds;
+	ulong_t edi;
+	ulong_t esi;
+	ulong_t ebp;
+	ulong_t esp;
+	ulong_t ebx;
+	ulong_t edx;
+	ulong_t ecx;
+	ulong_t eax;
+	ulong_t interrupt_number;
+	ulong_t error_code;
+	ulong_t eip_iret;
+	ulong_t cs_iret;
+	ulong_t eflags_iret;
+	ulong_t esp_iret;
+	ulong_t ss_iret;
+} registers_t;
 
 /* Priviliges */
 typedef enum protection_level_e {

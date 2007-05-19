@@ -15,4 +15,14 @@ Parameters		: address - The memory address
 */
 void memset(void * address, char byte, ulong_t size);
 
+/*
+Function name	: memcpy
+Purpose			: Copy memory
+Parameters		: destination - Destionation memory
+				  source - Source memory
+				  size - Size of memory in bytes to copy
+Returns			: The address of destination on success, NULL on failure
+*/
+void * memcpy(void * destination, void * source, ulong_t size);
+
 #endif

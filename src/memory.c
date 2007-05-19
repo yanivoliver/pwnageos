@@ -17,3 +17,21 @@ void memset(void * address, char byte, ulong_t size)
 		(*((char *)address)) = byte;
 	}
 }
+
+void * memcpy(void * destination, void * source, ulong_t size)
+{
+	/* Declare variables */
+	ulong_t i = 0;
+
+	/* Check references */
+	if (NULL == destination || NULL == source || 0 == size) {
+		return NULL;
+	}
+
+	/* Loop amount of size bytes and copy */
+	for (i = 0; i < size; i++) {
+		(*(((ulong_t *)destination)+i)) = (*(((ulong_t *)source)+i));
+	}
+
+	return destination;
+}

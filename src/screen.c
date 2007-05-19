@@ -3,14 +3,138 @@ Handle screen stuff
 Author: Shimi G.
 */
 #include "common.h"
+#include "schedule.h"
 #include "io.h"
+#include "memory.h"
 #include "screen.h"
 
-ushort_t g_screen_row = 0;
-ushort_t g_screen_column = 0;
-ushort_t g_screen_color = SCREEN_DEFAULT_COLOR;
-ushort_t g_screen_foreground = SCREEN_FOREGROUND_COLOR;
-ushort_t g_screen_background = SCREEN_BACKGROUND_COLOR;
+console_t * g_default_console = NULL;	/* Default console if nothing else is found, should be pointing to idle console */
+console_t * g_working_console = NULL;	/* The when that all writing operations effect */
+console_t * g_viewing_console = NULL;	/* The one that viewed currently to the screen */
+
+console_t * set_working_console(console_t * console)
+{
+	/* Declare variables */
+	console_t * previous_console = NULL;
+
+	/* Check console variable */
+	if (NULL == console) {
+		/* Set to defauly console */
+		console = g_default_console;
+	}
+
+	/* Set the console */
+	previous_console = g_working_console;
+	g_working_console = console;
+
+	/* Return previous console */
+	return previous_console;
+}
+
+void show_console(console_t * console)
+{
+	/* Check references */
+	if (NULL == console) {
+		return;
+	}
+
+	/* Set the default console as viewing console */
+	g_viewing_console = console;
+
+	/* Update the screen */
+	screen_update(TRUE);
+}
+
+void show_next_console()
+{
+	/* Declare variables */
+	process_t * process = NULL;
+
+	/* Get the first process*/
+	process = get_process_by_console(g_viewing_console);
+	if (NULL == process) {
+		/* Error finding process */
+		return;
+	}
+
+	/* If its the last process jump to the first process */
+	if (NULL == process->next_process) {
+		show_console(&get_head_process()->console);
+	}
+	/* Just go to the next process */
+	else {
+		show_console(&process->next_process->console);
+	}
+}
+
+void show_prev_console()
+{
+	/* Declare variables */
+	process_t * process = NULL;
+	process_t * process_found = NULL;
+
+	/* Get the first process*/
+	process = get_process_by_console(g_viewing_console);
+	if (NULL == process) {
+		/* Error finding process */
+		return;
+	}
+
+	/* If its the first process jump to the last one process */
+	if (get_head_process() == process) {
+		show_console(&get_last_process()->console);
+	}
+	/* Just go to the previous process */
+	else {
+		process_found = get_prev_process(process);
+		if (NULL != process_found) {
+			show_console(&process_found->console);
+		}
+	}
+}
+
+bool_t init_screen(ulong_t process_id)
+{
+	/* Declare variables */
+	process_t * process = NULL;
+
+	/* Get process */
+	process = get_process_by_id(process_id);
+	if (NULL == process) {
+		return FALSE;
+	}
+
+	/* Set as default console */
+	g_viewing_console = &process->console;
+	g_working_console = &process->console;
+
+	/* Set as viewing console */
+	//set_working_console(&process->console);
+
+	/* Show console */
+	//show_console(&process->console);
+
+	/* Return success*/
+	return TRUE;
+}
+
+void screen_update(bool_t forced)
+{
+	/* Variables */
+	uchar_t * video_memory = NULL;
+
+	/* Check if viewing console is the working one */
+	if (TRUE != forced && g_viewing_console != g_working_console) {
+		/* We dont need to redraw anything */
+		return;
+	}
+
+	/* Set video memory */
+	video_memory = (uchar_t *)SCREEN_SEGMENT;
+
+	/* Copy the console to the shared screen memory */
+	memcpy(video_memory, g_viewing_console->screen, SCREEN_ROWS * SCREEN_COLUMNS * 2);
+}
 
 void clrscr()
 {
@@ -20,7 +144,8 @@ void clrscr()
 	ulong_t i = 0;
 
 	/* Set screen memory */
-	video_memory = (uchar_t *)SCREEN_SEGMENT;
+	//video_memory = (uchar_t *)SCREEN_SEGMENT;
+	video_memory = g_working_console->screen;
 
 	/* Set screen size */
 	screen_size = SCREEN_ROWS * SCREEN_COLUMNS;
@@ -33,7 +158,7 @@ void clrscr()
 		/* Move to the next byte */
 		video_memory++;
 
-		(*video_memory) = g_screen_color;
+		(*video_memory) = g_working_console->color;
 
 		/* Move to the next byte */
 		video_memory++;
@@ -46,7 +171,11 @@ void clrscr()
 	out(0x3D5, 0);
 	out(0x3D4, 15);
 	out(0x3D5, 0);
+
+	/* Update the screen */
+	screen_update(FALSE);
 }
+
 
 void printf(const char * string, ...)
 {
@@ -73,11 +202,12 @@ void printf(const char * string, ...)
 	va_arg(arguments, char *);
 
 	/* Set screen memory */
-	video_memory_base = (uchar_t *)SCREEN_SEGMENT;
+	//video_memory_base = (uchar_t *)SCREEN_SEGMENT;
+	video_memory_base = g_working_console->screen;
 
 	/* Offset the screen to the correct location */
 	video_memory = video_memory_base;
-	video_memory += calculate_screen_offset(g_screen_row, g_screen_column);
+	video_memory += calculate_screen_offset(g_working_console->row, g_working_console->column);
 
 	/* Loop all characters */
 	i = 0;
@@ -130,12 +260,12 @@ void printf(const char * string, ...)
 			switch (string[i]) {
 				case '\n':
 					/* Set to the start of the next row */
-					g_screen_row += 1;
-					g_screen_column = 0;
+					g_working_console->row += 1;
+					g_working_console->column = 0;
 
 					/* Set the screen position*/
 					video_memory = video_memory_base;
-					video_memory += calculate_screen_offset(g_screen_row, g_screen_column);
+					video_memory += calculate_screen_offset(g_working_console->row, g_working_console->column);
 
 					/* Set as a special character */
 					special_character = TRUE;
@@ -162,6 +292,9 @@ void printf(const char * string, ...)
 		/* Move the pointer to the next character */
 		i++;
 	}
+
+	/* Update the screen */
+	screen_update(FALSE);
 }
 
 char convert_to_hex(char character)
@@ -194,11 +327,11 @@ void print_character(uchar_t ** video_memory, uchar_t character)
 	(**video_memory) = character;
 	(*video_memory) += 1;
 
-	(**video_memory) = g_screen_color;
+	(**video_memory) = g_working_console->color;
 	(*video_memory) += 1;
 
 	/* Move the screen to the next character */
-	g_screen_column += 1;
+	g_working_console->column += 1;
 
 	/* Recalculate screen bounds */
 	calculate_screen_bounds();
@@ -225,13 +358,13 @@ void calculate_screen_bounds()
 	video_memory = (uchar_t *)SCREEN_SEGMENT;
 
 	/* Check column bound */
-	if (SCREEN_COLUMNS <= g_screen_column) {
+	if (SCREEN_COLUMNS <= g_working_console->column) {
 		/* Set to the start of the next row */
-		g_screen_row += 1;
-		g_screen_column = 0;
+		g_working_console->row += 1;
+		g_working_console->column = 0;
 	}
 
-	if (SCREEN_ROWS <= g_screen_row) {
+	if (SCREEN_ROWS <= g_working_console->row) {
 		/* Copy all rows to the rows which are below */
 		/* Iterate all rows except the first one which will be overwritten */
 		for (i = 1; i < SCREEN_ROWS; i++) {
@@ -243,11 +376,11 @@ void calculate_screen_bounds()
 		}
 
 		/* Go to the last line */
-		g_screen_row -= 1;
+		g_working_console->row -= 1;
 
 		/* Clear the last line */
 		for (i = 0; i < SCREEN_COLUMNS*2; i++) {
-			*(video_memory+(g_screen_row*SCREEN_COLUMNS*2)+i) = 0x00;
+			*(video_memory+(g_working_console->row*SCREEN_COLUMNS*2)+i) = 0x00;
 		}		
 	}
 }
@@ -261,10 +394,10 @@ bool_t gotoxy(ushort_t row, ushort_t column)
 	//}
 
 	/* Set the row */
-	g_screen_row = row;
+	g_working_console->row = row;
 
 	/* Set the column */
-	g_screen_column = row;
+	g_working_console->column = column;
 
 	/* Return success */
 	return TRUE;
@@ -273,13 +406,13 @@ bool_t gotoxy(ushort_t row, ushort_t column)
 void calculate_screen_color()
 {
 	/* Calculate the screen color */
-	g_screen_color = ((g_screen_background << 4) | g_screen_foreground);
+	g_working_console->color = ((g_working_console->background << 4) | g_working_console->foreground);
 }
 
 void console_foreground(uchar_t color)
 {
 	/* Set the foreground */
-	g_screen_foreground = color;
+	g_working_console->foreground = color;
 
 	/* Recalculate colors */
 	calculate_screen_color();
@@ -288,7 +421,7 @@ void console_foreground(uchar_t color)
 void console_background(uchar_t color)
 {
 	/* Set the foreground */
-	g_screen_background = color;
+	g_working_console->background = color;
 
 	/* Recalculate colors */
 	calculate_screen_color();

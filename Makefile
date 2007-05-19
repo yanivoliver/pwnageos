@@ -15,7 +15,7 @@ INCLUDE = include/
 # $@ - Output
 # $? - Depends
 
-kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o syscall.o screen.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o
+kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o syscall.o
 	$(LD) -o $(OUTPUT)$@ --entry=0x1400 -Ttext 0x1400 --omagic -O 3 --oformat binary $?
 	make clean
 	make bootloader
@@ -27,7 +27,7 @@ bootloader: $(SRC)bootloader.asm
 boot.bin: $(SRC)boot.asm
 	$(NASM) -o $(OUTPUT)$@ $?
 
-screen.o : $(SRC)screen.c io.o
+screen.o : $(SRC)screen.c io.o memory.o schedule.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)screen.c
 	
 memory.o : $(SRC)memory.c
@@ -39,11 +39,14 @@ gdt.o : $(SRC)gdt.c memory.o
 tss.o : $(SRC)tss.c memory.o gdt.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)tss.c
 	
-schedule.o : $(SRC)schedule.c
+schedule.o : $(SRC)schedule.c syscall.o memory.o tss.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)schedule.c
 
 interrupts.o : $(SRC)interrupts.c tss.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)interrupts.c
+
+syscall.o : $(SRC)syscall.c interrupts.o schedule.o
+	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)syscall.c
 	
 io.o : $(SRC)io.c
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)io.c
@@ -56,11 +59,8 @@ irq.o : $(SRC)irq.c tss.o
 	
 keyboard.o : $(SRC)keyboard.c irq.o interrupts.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)keyboard.c
-	
-syscall.o : $(SRC)syscall.c interrupts.o schedule.o
-	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)syscall.c
 
-main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o syscall.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o
+main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o syscall.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)main.c
 
 kernel_lowlevel.o : $(SRC)kernel_lowlevel.asm
