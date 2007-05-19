@@ -60,4 +60,7 @@ typedef enum protection_level_e {
 	USER_PRIVILEGE		= 3
 } protection_level_t;
 
+/* Buffers */
+#define STRING_BUFFER	(50)
+
 #endif

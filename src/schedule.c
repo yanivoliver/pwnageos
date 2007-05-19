@@ -16,14 +16,13 @@ ulong_t g_base_stack = 0x50000;
 ulong_t g_process_id = 0;
 process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
 
-ulong_t create_process(ulong_t entry_point);
-
 extern int getch();
 extern int putch(int c);
 
-bool_t init_schedule()
+ulong_t init_schedule()
 {
 	/* Declare variables */
+	ulong_t idle_process_id = 0;
 
 	/* Clear process list */
 	memset(&g_process_list, '\0', NUMBER_OF_PROCESSES*sizeof(process_t));
@@ -34,16 +33,19 @@ bool_t init_schedule()
 	g_process_list[0].next_process = &g_process_list[1];
 
 	/* Process 1*/
-	create_process(idle);
+	idle_process_id = create_process(idle, "System");
 
 	/* Process 3 */
-	create_process(idle_second);
+	create_process(idle_second, "Testing input");
+
+	/* Process 3 */
+	create_process(idle_third, "Testing output");
 
 	/* Set the current process to the empty first entry */
 	g_current_process = &g_process_list[0];
 
 	/* Return success */
-	return TRUE;
+	return idle_process_id;
 }
 
 process_t * get_current_process()
@@ -189,7 +191,7 @@ void * allocate_process_memory()
 Function: create_process
 Purpse: Create a running process
 */
-ulong_t create_process(ulong_t entry_point)
+ulong_t create_process(ulong_t entry_point, uchar_t * name)
 {
 	/* Declare variables */
 	process_t * process = NULL;
@@ -220,8 +222,17 @@ ulong_t create_process(ulong_t entry_point)
 	process->registers.eip_iret = entry_point;
 	process->registers.eflags_iret = 0x0202;
 
+	if (NULL != name) {
+		/* Copy name */
+		memcpy(process->name, name, STRING_BUFFER-1);
+		process->name[STRING_BUFFER-1] = '\0';
+	} else {
+		process->name[0] = '\0';
+	}
+
 	/* Set console */
-	process->console.row = 0;
+	process->console.row = 1;
+	process->console.row_header = 1;
 	process->console.column = 0;
 	process->console.color = SCREEN_DEFAULT_COLOR;
 	process->console.foreground = SCREEN_FOREGROUND_COLOR;
@@ -229,6 +240,7 @@ ulong_t create_process(ulong_t entry_point)
 
 	set_working_console(&process->console);
 	clrscr();
+	draw_header(process->name);
 	set_working_console(NULL);
 
 	/* Connect the process */
@@ -333,5 +345,21 @@ void idle_second()
 	for(;;) {
 		i++;
 		putch(getch());
+	}	
+}
+
+void idle_third()
+{
+	ulong_t i = 0;
+	uchar_t ch = 41;
+	for(;;) {
+		i++;
+		if (0 == i % 999) {
+			putch(ch);
+			ch++;
+			if (ch >= 65) {
+				ch = 41;
+			}
+		}
 	}	
 }

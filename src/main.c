@@ -34,7 +34,7 @@ int main(void)
 	}
 
 	/* Clear screen */
-	clrscr();
+	//clrscr();
 
 	/* Print pre-init message */
 	printf("Initializing interrupts ... ");
