@@ -54,6 +54,7 @@ void init_idt()
 
 	/* Install sys-call handler */
 	install_interrupt_handler(0x0D, gpf_handler);
+	install_interrupt_handler(0x37, empty_handler);
 
 	/* Install timer handler */
 	install_irq_handler(0, empty_handler);

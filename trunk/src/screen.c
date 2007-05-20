@@ -110,6 +110,7 @@ bool_t init_screen(ulong_t process_id)
 	}
 
 	/* Set as default console */
+	g_default_console = &process->console;
 	g_viewing_console = &process->console;
 	g_working_console = &process->console;
 
@@ -187,6 +188,7 @@ void draw_header(uchar_t * name)
 	//process_t * process = NULL;
 	ulong_t i = 0;
 	ulong_t offset_count = 0;
+	uchar_t * help = "<F1-Previous> <F2-Next> <F3-Processes>";
 
 	/* Get current process */
 	//process = get_current_process();
@@ -201,6 +203,14 @@ void draw_header(uchar_t * name)
 	g_working_console->screen[2] = HEADER_SEPERATOR;
 	for (i = 0; i < strlen(name); i++) {
 		g_working_console->screen[offset_count] = name[i];
+		offset_count += 2;
+	}
+
+	/* Get process name */
+	offset_count = (SCREEN_COLUMNS-strlen(help)-1)*2;
+	g_working_console->screen[2] = HEADER_SEPERATOR;
+	for (i = 0; i < strlen(help); i++) {
+		g_working_console->screen[offset_count] = help[i];
 		offset_count += 2;
 	}
 }
@@ -254,7 +264,20 @@ void printf(const char * string, ...)
 				case 'c':
 					/* Print the character */
 					working_character = va_arg(arguments, int);
-					print_character(&video_memory, working_character);
+					if ('\n' == working_character) {
+						/* Set to the start of the next row */
+						g_working_console->row += 1;
+						g_working_console->column = 0;
+
+						/* Set the screen position*/
+						//video_memory = video_memory_base;
+						//video_memory += calculate_screen_offset(g_working_console->row, g_working_console->column);
+
+						/* Check screen bounds */
+						calculate_screen_bounds();
+					} else {
+						print_character(&video_memory, working_character);
+					}
 					break;
 				case 'd':
 					/* Print the hex number */
