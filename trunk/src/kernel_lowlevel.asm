@@ -175,12 +175,12 @@ configure_pic:
 	;mov al, 048h
 	;out 041h, al
 	
-	mov al, 036h
-	out 043h, al
-	mov al, LATCH & 0ffh
-	out 040h, al
-	mov al, LATCH >> 8
-	out 040h, al
+	;mov al, 036h
+	;out 043h, al
+	;mov al, LATCH & 0ffh
+	;out 040h, al
+	;mov al, LATCH >> 8
+	;out 040h, al
     
     ret
     
