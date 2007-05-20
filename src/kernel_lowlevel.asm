@@ -46,6 +46,8 @@ align 16
 %define INTERRUPT_NUMBER_OFFSET (11*4)
 %define INTERRUPT_ERROR_CODE_OFFSET (12*4)
 
+%define LATCH					(1193180/100)
+
 ; Get interrupt number from interrupt stack
 %macro GET_INTERRUPT_NUMBER 1
     mov %1, [esp+INTERRUPT_NUMBER_OFFSET]
@@ -99,8 +101,10 @@ EXPORT common_interrupt_handler
 
 EXPORT g_first_external_interrupt
 
+EXPORT getchar
 EXPORT getch
 EXPORT putch
+EXPORT gets
 
 IMPORT g_idt_handlers
 IMPORT idle
@@ -158,6 +162,26 @@ configure_pic:
     mov al, 0xfb        ; mask all ints but 2 in master
     out 0x21, al        ; OCW1 to master
     call    delay
+    
+    ; Configure timer
+    ;mov al, 036h
+    ;out 043h, al
+    ;mov al, 00h
+	;out 040h, al
+	;mov al, 00h
+	;out 040h, al
+	;mov al, 054h
+	;out 043h, al
+	;mov al, 048h
+	;out 041h, al
+	
+	mov al, 036h
+	out 043h, al
+	mov al, LATCH & 0ffh
+	out 040h, al
+	mov al, LATCH >> 8
+	out 040h, al
+    
     ret
     
 
@@ -315,6 +339,38 @@ getch:
     ;lea ebx, [ebp+8]
     ;mov dword [ebx], 000000000h
     ;mov byte [ebx], al
+    
+    pop ebx                  
+    pop ebp
+    ret
+    
+; int getchar();
+getchar:
+    push ebp
+    mov ebp, esp
+    push ebx
+    
+    mov ah, 001h
+    int 021h
+    and eax, 0000000FFh
+    
+    ;lea ebx, [ebp+8]
+    ;mov dword [ebx], 000000000h
+    ;mov byte [ebx], al
+    
+    pop ebx                  
+    pop ebp
+    ret
+    
+; int gets(char * buffer);
+gets:
+    push ebp
+    mov ebp, esp
+    push ebx
+    
+    mov ah, 00Ah
+    mov edx, [ebp+8]
+    int 021h
     
     pop ebx                  
     pop ebp

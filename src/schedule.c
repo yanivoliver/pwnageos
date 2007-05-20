@@ -17,7 +17,9 @@ ulong_t g_process_id = 0;
 process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
 
 extern int getch();
+extern int getchar();
 extern int putch(int c);
+extern int gets(char * buffer);
 
 ulong_t init_schedule()
 {
@@ -257,6 +259,7 @@ void schedule(ushort_t irq, registers_t * registers)
 	process_t * process = NULL;
 	bool_t process_found = FALSE;
 	uchar_t input = 0;
+	ulong_t i = 0;
 
 	/* Save all registers to the current process */
 	g_current_process->registers.eax = registers->eax;
@@ -326,8 +329,6 @@ void schedule(ushort_t irq, registers_t * registers)
 	registers->esp_iret = g_current_process->registers.esp_iret;
 	registers->ss_iret = g_current_process->registers.ss_iret;
 
-
-	//set_tss_available();
 	/* From now on... the new process supposed to be loaded */
 }
 
@@ -341,10 +342,17 @@ void idle()
 void idle_second()
 {
 	ulong_t i = 0;
-	int ch = 0;
+	char buffer[100] = {0};
+	char * ch = NULL;
 	for(;;) {
 		i++;
-		putch(getch());
+		getchar();
+		//ch = buffer;
+		//while(0 != (*ch)) {
+		//	putch((*ch));
+		//	ch++;
+		//}
+		//putch('\n');
 	}	
 }
 
