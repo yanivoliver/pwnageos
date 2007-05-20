@@ -363,11 +363,11 @@ void idle_third()
 	for(;;) {
 		i++;
 		if (0 == i % 999) {
-			putch(ch);
-			ch++;
-			if (ch >= 65) {
-				ch = 41;
-			}
+			putch('A');
+			//ch++;
+			//if (ch >= 65) {
+			//	ch = 41;
+			//}
 		}
 	}	
 }
