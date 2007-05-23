@@ -29,6 +29,9 @@ typedef struct console_rec {
 	uchar_t screen[SCREEN_ROWS*SCREEN_COLUMNS*2];
 } console_t;
 
+
+#include "process.h"
+
 /*
 Function name	: init_screen
 Purpose			: Initialize screen
@@ -43,7 +46,7 @@ Purpose			: Set working console which will receive all writings
 Parameters		: console - The console
 Returns			: Previous console
 */
-console_t * set_working_console(console_t * console);
+//console_t * set_working_console(console_t * console);
 
 /*
 Function name	: show_next_console
@@ -74,21 +77,21 @@ Function name	: clrscr
 Purpose			: Clear screen
 Parameters		: None
 */
-void clrscr();
+void clrscr(console_t * console);
 
 /*
 Function name	: draw_header
 Purpose			: Draws process header
 Parameters		: None
 */
-void draw_header(uchar_t * name);
+void draw_header(console_t * console, uchar_t * name);
 
 /*
 Function name	: printf
 Purpose			: Print string to the screen
 Parameters		: string - the string
 */
-void printf(const char * string, ...);
+void printf(console_t * console, const char * string, ...);
 
 /*
 Function name	: print_character
@@ -96,7 +99,14 @@ Purpose			: Print a character to the screen
 Parameters		: video_memory - Pointer to the memory location
 				  character - The character to print
 */
-void print_character(uchar_t ** video_memory, uchar_t character);
+void print_character(console_t * console, uchar_t ** video_memory, uchar_t character);
+
+/*
+Function name	: remove_character
+Purpose			: Removes a character from the screen
+Parameters		: console - The working IO console
+*/
+void remove_character(console_t * console);
 
 /*
 Function name	: gotoxy
@@ -106,7 +116,7 @@ Return			: TRUE - Success
 Parameters		: row - The row of the character
 				  column - The column of the character
 */
-bool_t gotoxy(ushort_t row, ushort_t column);
+bool_t gotoxy(console_t * console, ushort_t row, ushort_t column);
 
 /*
 Function name	: calculate_screen_offset
@@ -138,27 +148,34 @@ Function name	: calculate_screen_bounds
 Purpose			: Calculate screen bounds overflow
 Parameters		: None
 */
-void calculate_screen_bounds();
+void calculate_screen_bounds(console_t * console);
 
 /*
 Function name	: calculate_screen_color
 Purpose			: Calculate screen color using the global colors
 Parameters		: None
 */
-void calculate_screen_color();
+void calculate_screen_color(console_t * console);
 
 /*
 Function name	: console_foreground
 Purpose			: Set the foreground color
 Parameters		: None
 */
-void console_foreground(uchar_t color);
+void console_foreground(console_t * console, uchar_t color);
 
 /*
 Function name	: console_background
 Purpose			: Set the background color
 Parameters		: None
 */
-void console_background(uchar_t color);
+void console_background(console_t * console, uchar_t color);
+
+/*
+Function name	: get_viewing_process
+Purpose			: Get the current viewing process
+Parameters		: None
+*/
+process_t * get_viewing_process(void);
 
 #endif

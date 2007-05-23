@@ -15,6 +15,7 @@ Author: Shimi G.
 
 /* Extern from kernel_low_level */
 extern void infinite_loop();
+void empty_irq_handler(ushort_t irq, registers_t * registers);
 
 int main(void)
 {
@@ -37,112 +38,119 @@ int main(void)
 	//clrscr();
 
 	/* Print pre-init message */
-	printf("Initializing interrupts ... ");
+	printf(NULL, "Initializing interrupts ... ");
 
 	/* Initialize interrupts */
 	if (TRUE == init_interrupts()) {
 		/* Print post-init message*/
-		console_foreground(0x4);
-		printf("[Done]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x4);
+		printf(NULL, "[Done]\n");
+		console_foreground(NULL, 0xF);
 	} else {
 		/* Error */
-		console_foreground(0x3);
-		printf("[Error]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x3);
+		printf(NULL, "[Error]\n");
+		console_foreground(NULL, 0xF);
 
 		/* Enter panic mode */
 		infinite_loop();
 	}
 
 	/* Print pre-init message */
-	printf("Initializing gdt table ... ");
+	printf(NULL, "Initializing gdt table ... ");
 
 	/* Initialize interrupts */
 	if (TRUE == init_gdt()) {
 		/* Print post-init message*/
-		console_foreground(0x4);
-		printf("[Done]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x4);
+		printf(NULL, "[Done]\n");
+		console_foreground(NULL, 0xF);
 	} else {
 		/* Error */
-		console_foreground(0x3);
-		printf("[Error]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x3);
+		printf(NULL, "[Error]\n");
+		console_foreground(NULL, 0xF);
 
 		/* Enter panic mode */
 		infinite_loop();
 	}
 
 	/* Print pre-init message */
-	printf("Initializing tss ... ");
+	printf(NULL, "Initializing tss ... ");
 
 	/* Initialize interrupts */
 	if (TRUE == init_tss()) {
 		/* Print post-init message*/
-		console_foreground(0x4);
-		printf("[Done]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x4);
+		printf(NULL, "[Done]\n");
+		console_foreground(NULL, 0xF);
 	} else {
 		/* Error */
-		console_foreground(0x3);
-		printf("[Error]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x3);
+		printf(NULL, "[Error]\n");
+		console_foreground(NULL, 0xF);
 
 		/* Enter panic mode */
 		infinite_loop();
 	}
 
 	/* Print pre-init message */
-	printf("Initializing syscall manager ... ");
+	printf(NULL, "Initializing syscall manager ... ");
 
 	/* Initialize interrupts */
 	if (TRUE == init_syscall()) {
 		/* Print post-init message*/
-		console_foreground(0x4);
-		printf("[Done]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x4);
+		printf(NULL, "[Done]\n");
+		console_foreground(NULL, 0xF);
 	} else {
 		/* Error */
-		console_foreground(0x3);
-		printf("[Error]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x3);
+		printf(NULL, "[Error]\n");
+		console_foreground(NULL, 0xF);
 
 		/* Enter panic mode */
 		infinite_loop();
 	}
 
 	/* Print pre-init message */
-	printf("Initializing keyboard ... ");
+	printf(NULL, "Initializing keyboard ... ");
 
 	/* Initialize interrupts */
 	if (TRUE == init_keyboard()) {
 		/* Print post-init message*/
-		console_foreground(0x4);
-		printf("[Done]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x4);
+		printf(NULL, "[Done]\n");
+		console_foreground(NULL, 0xF);
 	} else {
 		/* Error */
-		console_foreground(0x3);
-		printf("[Error]\n");
-		console_foreground(0xF);
+		console_foreground(NULL, 0x3);
+		printf(NULL, "[Error]\n");
+		console_foreground(NULL, 0xF);
 
 		/* Enter panic mode */
 		infinite_loop();
 	}
 	
 	__asm__("int $0x80");
-	__asm__("int $0x44");
-	__asm__("int $0x64");
-	__asm__("int $0x3");
 	__asm__("int $0x7F");
 
 	/* Re-install irq handler of the timer */
+	install_irq_handler(8, empty_irq_handler);
+	enable_irq(8);
+
 	install_irq_handler(0, schedule);
+	enable_irq(0);
 
 	/* Enter into an infinite loop */
 	infinite_loop();
 
 	/* Return which doesnt ever supposed to happend*/
 	return 0;
+}
+
+
+void empty_irq_handler(ushort_t irq, registers_t * registers)
+{
+	printf(NULL, "7,");
 }
