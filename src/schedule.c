@@ -5,8 +5,11 @@ Schedule handling
 */
 #include "common.h"
 #include "memory.h"
+#include "string.h"
+#include "process.h"
 #include "schedule.h"
 #include "syscall.h"
+#include "keyboard.h"
 #include "tss.h"
 
 process_t * g_current_process = NULL;
@@ -20,6 +23,7 @@ extern int getch();
 extern int getchar();
 extern int putch(int c);
 extern int gets(char * buffer);
+extern void puts(char * buffer);
 
 ulong_t init_schedule()
 {
@@ -37,10 +41,13 @@ ulong_t init_schedule()
 	/* Process 1*/
 	idle_process_id = create_process(idle, "System");
 
+	/* Process 2 */
+	create_process(idle_fourth, "Testing simple input");
+	
 	/* Process 3 */
-	create_process(idle_second, "Testing input");
+	create_process(idle_second, "Testing interactive input");
 
-	/* Process 3 */
+	/* Process 4 */
 	create_process(idle_third, "Testing output");
 
 	/* Set the current process to the empty first entry */
@@ -212,6 +219,11 @@ ulong_t create_process(ulong_t entry_point, uchar_t * name)
 	g_process_id++;
 	process->process_id = g_process_id;
 
+	/* Set the input information */
+	process->input.current_key = KEYQUEUE_NEW_QUEUE;
+	process->input.empty_node = 0;
+	memset(&process->input.key_buffer, '\0', sizeof(keyboard_queue_entry) * KEY_QUEUE_SIZE);
+
 	/* Set information */
 	process->blocking = FALSE;
 	process->blocking_syscall = NULL;
@@ -240,10 +252,8 @@ ulong_t create_process(ulong_t entry_point, uchar_t * name)
 	process->console.foreground = SCREEN_FOREGROUND_COLOR;
 	process->console.background = SCREEN_BACKGROUND_COLOR;
 
-	set_working_console(&process->console);
-	clrscr();
-	draw_header(process->name);
-	set_working_console(NULL);
+	clrscr(&process->console);
+	draw_header(&process->console, process->name);
 
 	/* Connect the process */
 	process->next_process = g_head_process;
@@ -302,6 +312,8 @@ void schedule(ushort_t irq, registers_t * registers)
 			} else {
 				/* Syscall is done */
 				process_found = TRUE;
+				g_current_process->blocking = FALSE;
+				g_current_process->blocking_syscall = 0;
 			}
 		} else {
 			/* We have found the process */
@@ -341,18 +353,49 @@ void idle()
 
 void idle_second()
 {
-	ulong_t i = 0;
 	char buffer[100] = {0};
-	char * ch = NULL;
+	char ch = 0;
+	bool_t valid_choice = FALSE;
+
 	for(;;) {
-		i++;
-		getchar();
-		//ch = buffer;
-		//while(0 != (*ch)) {
-		//	putch((*ch));
-		//	ch++;
-		//}
-		//putch('\n');
+		puts("===== IO Tests =====\n");
+		puts("     1) Print hello\n");
+		puts("     2) Get character input\n");
+		puts("     3) Get string input\n");
+
+		do {
+			puts("Please choose one: ");
+			ch = getchar();
+			puts("\n");
+
+			if (ch == '1' || ch == '2' || ch == '3') {
+				valid_choice = TRUE;
+			} else {
+				valid_choice = FALSE;
+			}
+		} while (FALSE == valid_choice);
+
+		puts("\n===== IO Results =====\n");
+		switch (ch) {
+		case '1':
+			puts("Hello world !\n");
+			break;
+		case '2':
+			puts("Enter character: ");
+			ch = getchar();
+			puts("\nYou entered ");
+			putch(ch);
+			putch('\n');
+			break;
+		case '3':
+			puts("Enter you name: ");
+			gets(buffer);
+			puts("\nYour name is ");
+			puts(buffer);
+			putch('\n');
+			break;
+		}
+		putch('\n');
 	}	
 }
 
@@ -362,12 +405,19 @@ void idle_third()
 	uchar_t ch = 41;
 	for(;;) {
 		i++;
-		if (0 == i % 999) {
+		if (0 == i % 99999) {
 			putch('A');
-			//ch++;
-			//if (ch >= 65) {
-			//	ch = 41;
-			//}
 		}
+	}	
+}
+
+void idle_fourth()
+{
+	char buffer[1024] = {0};
+	for(;;) {
+		gets(buffer);
+		puts(" / ");
+		puts(buffer);
+		putch('\n');
 	}	
 }

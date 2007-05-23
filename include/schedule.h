@@ -7,21 +7,9 @@ Schedule handling
 #ifndef HEADER_PWNAGE_SCHEDULE
 #define HEADER_PWNAGE_SCHEDULE
 
-#include "syscall.h"
-#include "screen.h"
+#include "process.h"
 
 #define NUMBER_OF_PROCESSES	(10)
-
-/* Process*/
-typedef struct process_rec {
-	ulong_t process_id;
-	registers_t registers;
-	bool_t blocking;
-	syscall_entry_t * blocking_syscall;
-	console_t console;
-	uchar_t name[STRING_BUFFER];
-	struct process_rec * next_process;
-} process_t;
 
 /*
 Function name	: create_process
@@ -105,6 +93,7 @@ Parameters		: None
 */
 void idle_second();
 void idle_third();
+void idle_fourth();
 
 
 #endif

@@ -34,7 +34,7 @@ void syscall_handler(ushort_t interrupt_number, registers_t * registers)
 			reschedule = TRUE;			
 		}
 	} else {
-		printf("Unknown syscall\n");
+		printf(NULL, "Unknown syscall %d\n", g_syscall_table[key]);
 	}
 
 	/* Check if we need to rechedule */

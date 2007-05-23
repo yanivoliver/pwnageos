@@ -239,6 +239,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\include\process.h"
+				>
+			</File>
+			<File
 				RelativePath=".\schedule.h"
 				>
 			</File>

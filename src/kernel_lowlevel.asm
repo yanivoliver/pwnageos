@@ -71,8 +71,8 @@ align 16
 ICW1        equ 0x11        ; ICW1 - ICW4 needed, cascade mode, interval=8,
                             ; edge triggered. (I think interval is irrelevant
                             ; for x86.)
-ICW2_MASTER equ 0x30        ; put IRQs 0-7 at 0x20 (above Intel reserved ints)
-ICW2_SLAVE  equ 0x38        ; put IRQs 8-15 at 0x28
+ICW2_MASTER equ 0x30        ; put IRQs 0-7 at 0x30 (above Intel reserved ints)
+ICW2_SLAVE  equ 0x38        ; put IRQs 8-15 at 0x38
 ICW3_MASTER equ 0x04        ; IR2 connected to slave
 ICW3_SLAVE  equ 0x02        ; slave has id 2
 ICW4        equ 0x01        ; 8086 mode, no auto-EOI, non-buffered mode,
@@ -105,6 +105,7 @@ EXPORT getchar
 EXPORT getch
 EXPORT putch
 EXPORT gets
+EXPORT puts
 
 IMPORT g_idt_handlers
 IMPORT idle
@@ -170,10 +171,12 @@ configure_pic:
 	;out 040h, al
 	;mov al, 00h
 	;out 040h, al
-	;mov al, 054h
+	;;mov al, 036h
 	;out 043h, al
-	;mov al, 048h
-	;out 041h, al
+	;mov al, 00Bh
+	;out 040h, al
+	;mov al, 0E9h
+	;out 040h, al
 	
 	;mov al, 036h
 	;out 043h, al
@@ -297,9 +300,12 @@ common_interrupt_handler:
     
     ; No handler found. Print appropriate message.    
 .no_handler_found:
+	xor eax, eax
     push ebx
     push interrupt_message
+    push eax
     call printf
+    pop eax
     pop eax
     pop ebx
     
@@ -367,11 +373,29 @@ gets:
     push ebp
     mov ebp, esp
     push ebx
+    push edx
     
     mov ah, 00Ah
     mov edx, [ebp+8]
     int 021h
     
+    pop edx
+    pop ebx                  
+    pop ebp
+    ret
+    
+; void puts(char * buffer);
+puts:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push edx
+    
+    mov ah, 009h
+    mov edx, [ebp+8]
+    int 021h
+    
+    pop edx
     pop ebx                  
     pop ebp
     ret
@@ -380,12 +404,14 @@ gets:
 putch:
     push ebp
     mov ebp, esp
+    push edx
     
     mov ah, 002h
     mov dl, byte [ebp+8]
     int 021h
     and eax, 0000000FFh
     
+    pop edx
     pop ebp
     ret
 

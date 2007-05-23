@@ -167,5 +167,5 @@ bool_t uninstall_interrupt_handler(ushort_t interrupt_number)
 
 void gpf_handler(ushort_t interrupt_number, registers_t * registers)
 {
-	printf("** General protection fault\n");
+	printf(NULL, "** General protection fault\n");
 }
