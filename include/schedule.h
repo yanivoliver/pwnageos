@@ -9,7 +9,7 @@ Schedule handling
 
 #include "process.h"
 
-#define NUMBER_OF_PROCESSES	(10)
+#define NUMBER_OF_PROCESSES	(30)
 
 /*
 Function name	: create_process

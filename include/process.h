@@ -19,9 +19,9 @@ struct process_rec {
 	registers_t registers;
 	bool_t blocking;
 	syscall_entry_t * blocking_syscall;
-	console_t console;
 	input_t input;
 	uchar_t name[STRING_BUFFER];
+	console_t console;
 	struct process_rec * next_process;
 };
 

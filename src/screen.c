@@ -143,7 +143,7 @@ void screen_update(console_t * console, bool_t forced)
 	video_memory = (uchar_t *)SCREEN_SEGMENT;
 
 	/* Copy the console to the shared screen memory */
-	memcpy(video_memory, g_viewing_process->console.screen, SCREEN_ROWS * SCREEN_COLUMNS * 2);
+	memcpy(video_memory, g_viewing_process->console.screen, SCREEN_COLUMNS*SCREEN_ROWS*2);
 }
 
 void clrscr(console_t * console)

@@ -20,14 +20,33 @@ Author: Shimi G.
 #define SCREEN_SEGMENT			(0xB8000)
 
 typedef struct console_rec {
+	uchar_t screen[SCREEN_ROWS*SCREEN_COLUMNS*2];
 	ushort_t row;
 	ushort_t row_header;
 	ushort_t column;
 	ushort_t color;
 	ushort_t foreground;
 	ushort_t background;
-	uchar_t screen[SCREEN_ROWS*SCREEN_COLUMNS*2];
 } console_t;
+
+typedef enum screen_color_e {
+	SCREEN_COLOR_BLACK = 0x0,
+	SCREEN_COLOR_BLUE = 0x1,
+	SCREEN_COLOR_GREEN = 0x2,
+	SCREEN_COLOR_CYAN = 0x3,
+	SCREEN_COLOR_RED = 0x4,
+	SCREEN_COLOR_MAGENTA = 0x5,
+	SCREEN_COLOR_BROWN = 0x6,
+	SCREEN_COLOR_GRAY_LIGHT = 0x7,
+	SCREEN_COLOR_GRAY_DARK = 0x8,
+	SCREEN_COLOR_BLUE_LIGHT = 0x9,
+	SCREEN_COLOR_GREEN_LIGHT = 0xA,
+	SCREEN_COLOR_CYAN_LIGHT = 0xB,
+	SCREEN_COLOR_RED_LIGHT = 0xC,
+	SCREEN_COLOR_MAGENTA_LIGHT = 0xD,
+	SCREEN_COLOR_YELLOW = 0xE,
+	SCREEN_COLOR_WHITE = 0xF
+} screen_color_t;
 
 
 #include "process.h"
