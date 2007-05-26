@@ -114,6 +114,8 @@ start:
     call floppy_read
     add sp, 4
     
+    call floppy_kill_motor
+    
     jmp DIRSEG:0200h
         
 loopy:
@@ -381,11 +383,18 @@ function_end:
 success:
     mov ax, 0
     jmp function_end
+    
+    
+floppy_kill_motor:
+    mov dx, 0x3f2
+    xor al, al
+    out dx, al
+    ret
 
 
 
 ; STRINGS
-startup_msg             db "Booting up pwnageOS", 0dh, 0ah, 0h
+startup_msg             db "pwnageOS", 0dh, 0ah, 0h
 ;tarting up pwnageOS!
 int13error_msg          db "Err", 0dh, 0ah, 0h
 ; setting int13

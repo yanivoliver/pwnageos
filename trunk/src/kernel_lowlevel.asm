@@ -173,9 +173,9 @@ configure_pic:
 	;out 040h, al
 	;;mov al, 036h
 	;out 043h, al
-	;mov al, 00Bh
+	;mov al, 09Bh
 	;out 040h, al
-	;mov al, 0E9h
+	;mov al, 02Eh
 	;out 040h, al
 	
 	;mov al, 036h

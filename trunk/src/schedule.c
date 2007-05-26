@@ -31,7 +31,7 @@ ulong_t init_schedule()
 	ulong_t idle_process_id = 0;
 
 	/* Clear process list */
-	memset(&g_process_list, '\0', NUMBER_OF_PROCESSES*sizeof(process_t));
+	memset(g_process_list, '\0', NUMBER_OF_PROCESSES*sizeof(process_t));
 
 	/* Process 0 -  This process should be deprecated from been used.
 					it is used only as a jump process to the real process list when
@@ -51,7 +51,7 @@ ulong_t init_schedule()
 	create_process(idle_third, "Testing output");
 
 	/* Set the current process to the empty first entry */
-	g_current_process = &g_process_list[0];
+	g_current_process = NULL;
 
 	/* Return success */
 	return idle_process_id;
@@ -179,7 +179,7 @@ process_t * get_prev_process(process_t * process_seek)
 
 /* This function is an abstract,
    in the future it will be replaced with dynamic allocation */
-void * allocate_process_memory()
+static void * allocate_process_memory()
 {
 	/* Declare variables */
 	ulong_t i = 0;
@@ -200,7 +200,7 @@ void * allocate_process_memory()
 Function: create_process
 Purpse: Create a running process
 */
-ulong_t create_process(ulong_t entry_point, uchar_t * name)
+static ulong_t create_process(ulong_t entry_point, uchar_t * name)
 {
 	/* Declare variables */
 	process_t * process = NULL;
@@ -271,24 +271,28 @@ void schedule(ushort_t irq, registers_t * registers)
 	uchar_t input = 0;
 	ulong_t i = 0;
 
-	/* Save all registers to the current process */
-	g_current_process->registers.eax = registers->eax;
-	g_current_process->registers.ecx = registers->ecx;
-	g_current_process->registers.edx = registers->edx;
-	g_current_process->registers.ebx = registers->ebx;
-	g_current_process->registers.esp = registers->esp;
-	g_current_process->registers.ebp = registers->ebp;
-	g_current_process->registers.esi = registers->esi;
-	g_current_process->registers.edi = registers->edi;
-	g_current_process->registers.ds = registers->ds;
-	g_current_process->registers.es = registers->es;
-	g_current_process->registers.fs = registers->fs;
+	if (NULL == g_current_process) {
+		g_current_process = g_head_process;
+	} else {
+		/* Save all registers to the current process */
+		g_current_process->registers.eax = registers->eax;
+		g_current_process->registers.ecx = registers->ecx;
+		g_current_process->registers.edx = registers->edx;
+		g_current_process->registers.ebx = registers->ebx;
+		g_current_process->registers.esp = registers->esp;
+		g_current_process->registers.ebp = registers->ebp;
+		g_current_process->registers.esi = registers->esi;
+		g_current_process->registers.edi = registers->edi;
+		g_current_process->registers.ds = registers->ds;
+		g_current_process->registers.es = registers->es;
+		g_current_process->registers.fs = registers->fs;
 
-	g_current_process->registers.eip_iret = registers->eip_iret;
-	g_current_process->registers.cs_iret = registers->cs_iret;
-	g_current_process->registers.eflags_iret = registers->eflags_iret;
-	g_current_process->registers.esp_iret = registers->esp_iret;
-	g_current_process->registers.ss_iret = registers->ss_iret;
+		g_current_process->registers.eip_iret = registers->eip_iret;
+		g_current_process->registers.cs_iret = registers->cs_iret;
+		g_current_process->registers.eflags_iret = registers->eflags_iret;
+		g_current_process->registers.esp_iret = registers->esp_iret;
+		g_current_process->registers.ss_iret = registers->ss_iret;
+	}
 
 	while (TRUE != process_found) {
 		/* Find a new process */
@@ -303,7 +307,6 @@ void schedule(ushort_t irq, registers_t * registers)
 		g_current_process = process;
 
 		/* Check blocking mode */
-		/* TODO: Call the helper function who blocked this thread, so it could be un-locked */
 		if (TRUE == g_current_process->blocking) {
 			/* Call the recall handler of the syscall */
 			if (TRUE != g_current_process->blocking_syscall->recall_handler(&g_current_process->registers, g_current_process->blocking_syscall)) {
@@ -402,11 +405,10 @@ void idle_second()
 void idle_third()
 {
 	ulong_t i = 0;
-	uchar_t ch = 41;
 	for(;;) {
 		i++;
 		if (0 == i % 99999) {
-			putch('A');
+			puts("Writing,");
 		}
 	}	
 }
