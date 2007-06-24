@@ -16,9 +16,13 @@ ushort_t g_irq_mask = 0xfffb;
 /* Global table of irq handlers */
 irq_handler_t g_irq_handlers[NUMBER_OF_IRQ_ENTRIES] = {0};
 
+bool_t g_dispatch_irq = FALSE;
+
 /* Where the irq are mapped in the interrupt table */
 extern uchar_t g_first_external_interrupt;
 extern void common_irq_handler(ushort_t interrupt_number, registers_t * registers);
+extern void enable_interrupts();
+extern void disable_interrupts();
 
 /* Macros to handle irq mask which is WORD and we use only one byte at a time */
 #define MASTER(mask)	((mask) & 0xff)
@@ -153,13 +157,28 @@ void common_irq_handler(ushort_t interrupt_number, registers_t * registers)
 	/* Calculate the irq number */
 	irq = interrupt_number - g_first_external_interrupt;
 
-	/* Find and appropriate irq handler */
-	if (NULL != g_irq_handlers[irq]) {
-		/* Call the irq handler */
-		g_irq_handlers[irq](irq, registers);
-	} else {
-		/* No default handler found. Print an appropriate message */
-		printf("Irq 0x%X called, no deafult handler found !\n", irq);
+	/* Check if already dispatching an irq */
+	if (0 == irq || FALSE == is_dispatching_irq()) {
+		/* If its not the PIT, enable interrupts */
+		if (0 != irq) {
+			set_irq_dispatching(TRUE);
+			enable_interrupts();
+		}
+
+		/* Find and appropriate irq handler */
+		if (NULL != g_irq_handlers[irq]) {
+			/* Call the irq handler */
+			g_irq_handlers[irq](irq, registers);
+		} else {
+			/* No default handler found. Print an appropriate message */
+			printf(NULL, "Irq 0x%X called, no deafult handler found !\n", irq);
+		}
+
+		/* If its not the PIT, disable interrupts */
+		if (0 != irq) {
+			disable_interrupts();
+			set_irq_dispatching(FALSE);
+		}		
 	}
 
 	/* End the irq session with the PIC chip */
@@ -174,6 +193,35 @@ void common_irq_handler(ushort_t interrupt_number, registers_t * registers)
 		out(PIC_1_CONTROL, command);
 		out(PIC_0_CONTROL, 0x62);
     }
+}
+
+bool_t is_irq_interrupt(ulong_t interrupt_number)
+{
+	/* Variables */
+	uchar_t command = 0;
+	ushort_t irq = 0;
+
+	/* Calculate the irq number */
+	irq = interrupt_number - g_first_external_interrupt;
+
+	/* Check the irq number */
+	if (IRQ_HIGH_LIMIT < irq || IRQ_LOW_LIMIT > irq) {
+		/* Corrupt irq number, return failure */
+		return FALSE;
+	}
+
+	/* Its an irq */
+	return TRUE;
+}
+
+bool_t is_dispatching_irq()
+{
+	return g_dispatch_irq;
+}
+
+void set_irq_dispatching(bool_t dispatch)
+{
+	g_dispatch_irq = dispatch;
 }
 
 /*

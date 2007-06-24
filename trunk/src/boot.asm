@@ -7,16 +7,18 @@ org 0h
 jmp start
 
 ; 1.44Mb disks:
-%define SYSSEG 140h     ; Defines the segment of the system
-%define LOADERSEG (120h)    ; Our segment
+%define SYSSEG			(0840h)		; Defines the segment of the system
+%define SYSSEG_HIGHER	(20000h)	; System segment at higher address
+%define LOADERSEG		(0820h)		; Our segment
+%define KERNEL_SIZE		(5C29Ch)	; Max kernel size in double words (which is 1.44 mb)
 
 bits 16
 ; The begining of the code
 start:
     cli             ; Disable all interupts for now
     
-    lidt [1200h+IDT_Pointer] ; load the idt
-    lgdt [1200h+GDT_Pointer] ; load the gdt
+    lidt [08200h+IDT_Pointer] ; load the idt
+    lgdt [08200h+GDT_Pointer] ; load the gdt
 
     ; Jump to protected mode
     mov ax, 1h          ; protected mode (PE) bit
@@ -40,9 +42,15 @@ bootloader_32_bit:
     ; Set the stack
     mov esp, (8 * 1024 * 1024)
     
+    ; Move the kernel to a higher address, we dont know its address but we do know its max 1.44 mb
+    mov ecx, KERNEL_SIZE
+    mov esi, (SYSSEG << 4)
+    mov edi, (SYSSEG_HIGHER << 4)
+    rep movsd    
+    
     ; Now we are in 32-bit protected mode
     ; we will jump here to the native c kernel code    
-    jmp (1<<3) : (SYSSEG << 4)
+    jmp (1<<3) : (SYSSEG_HIGHER << 4)
     
 bits 16
 

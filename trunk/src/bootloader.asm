@@ -41,7 +41,7 @@ fileSysType db 'FAT12   '
 %define sectorsPerTrack 0012h    ; Floppy Definition
 %define driveNum 00h         ; floppy Definition
 
-%define DIRSEG 0100h         ; Defines where to read the directory info to.
+%define DIRSEG 0800h         ; Defines where to read the directory info to.
 %define CMPLEN 0Bh       ; Defines the number of bytes to compare (FAT12 definition)
 %define directoryLBA 0013h   ; Defines the Directory LBA
 %define filesPerSector 10h   ; Number of files that enter a single sector

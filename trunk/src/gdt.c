@@ -27,7 +27,7 @@ bool_t init_gdt()
 	memset(g_gdt_table, '\0', GDT_ENTRY_SIZE*NUMBER_OF_GDT_ENTRIES);
 
 	/* Set kernel code segment */
-	set_entry_bounds(1, 0x0000, 0xFFFF);
+	set_entry_bounds(1, 0x0000, 0xFFFFF);
 	g_gdt_table[1].db_bit = 1;
 	g_gdt_table[1].dpl = KERNEL_PRIVILEGE;
 	g_gdt_table[1].present = 1;
@@ -38,7 +38,7 @@ bool_t init_gdt()
 	g_gdt_table[1].used = 1;
 
 	/* Set kernel data segment */
-	set_entry_bounds(2, 0x0000, 0xFFFF);
+	set_entry_bounds(2, 0x0000, 0xFFFFF);
 	g_gdt_table[2].db_bit = 1;
 	g_gdt_table[2].dpl = KERNEL_PRIVILEGE;
 	g_gdt_table[2].present = 1;
@@ -49,7 +49,7 @@ bool_t init_gdt()
 	g_gdt_table[2].used = 1;
 
 	/* Set user code segment */
-	set_entry_bounds(3, 0x0000, 0xFFFF);
+	set_entry_bounds(3, 0x0000, 0xFFFFF);
 	g_gdt_table[3].db_bit = 1;
 	g_gdt_table[3].dpl = USER_PRIVILEGE;
 	g_gdt_table[3].present = 1;
@@ -60,7 +60,7 @@ bool_t init_gdt()
 	g_gdt_table[3].used = 1;
 
 	/* Set user data segment */
-	set_entry_bounds(4, 0x0000, 0xFFFF);
+	set_entry_bounds(4, 0x0000, 0xFFFFF);
 	g_gdt_table[4].db_bit = 1;
 	g_gdt_table[4].dpl = USER_PRIVILEGE;
 	g_gdt_table[4].present = 1;

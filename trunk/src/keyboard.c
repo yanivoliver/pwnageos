@@ -313,6 +313,13 @@ bool_t syscall_char_write(registers_t * registers, struct syscall_entry_rec * sy
 	/* Declare variables */
 	uchar_t output = 0;
 	process_t * process = NULL;
+	ulong_t i = 0;
+
+	//for(i = 0; i < 0xFFFFFFFF; i++) {
+	//}
+	return TRUE;
+
+
 
 	/* Get outut char from DL */
 	output = registers->edx & 0xFF;
@@ -341,6 +348,7 @@ bool_t syscall_string_write(registers_t * registers, struct syscall_entry_rec * 
 	/* Declare variables */
 	uchar_t * output = NULL;
 	process_t * process = NULL;
+	ulong_t i = 0;
 
 	/* Get outut char from DL */
 	output = registers->edx;
@@ -348,6 +356,10 @@ bool_t syscall_string_write(registers_t * registers, struct syscall_entry_rec * 
 	/* Set return value */
 	registers->eax &= 0xFFFFFF00;
 	registers->eax |= 0x00000024;
+
+	for (i = 0; i < 0xFF; i++)
+	{
+	}
 
 	/* Print the character */
 	process = get_current_process();

@@ -153,6 +153,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\src\dma.c"
+				>
+			</File>
+			<File
 				RelativePath=".\src\floppy.c"
 				>
 			</File>
@@ -216,6 +220,10 @@
 			>
 			<File
 				RelativePath=".\include\common.h"
+				>
+			</File>
+			<File
+				RelativePath=".\include\dma.h"
 				>
 			</File>
 			<File

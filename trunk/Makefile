@@ -16,8 +16,8 @@ INCLUDE = include/
 # $? - Depends
 
 # --omagic -O 3 
-kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o syscall.o floppy.o
-	$(LD) -o $(OUTPUT)$@ --entry=0x1400 -Ttext 0x1400 --oformat binary $?
+kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o memory.o gdt.o tss.o schedule.o irq.o string.o keyboard.o syscall.o dma.o floppy.o
+	$(LD) -o $(OUTPUT)$@ --entry=0x200000 -Ttext 0x200000 --oformat binary $?
 	make clean
 	make bootloader
 	make boot.bin
@@ -34,7 +34,7 @@ screen.o : $(SRC)screen.c io.o memory.o schedule.o
 memory.o : $(SRC)memory.c
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)memory.c
 	
-floppy.o : $(SRC)floppy.c
+floppy.o : $(SRC)floppy.c io.o dma.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)floppy.c
 	
 gdt.o : $(SRC)gdt.c memory.o
@@ -58,13 +58,16 @@ io.o : $(SRC)io.c
 string.o : $(SRC)string.c
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)string.c
 
-irq.o : $(SRC)irq.c tss.o
+irq.o : $(SRC)irq.c tss.o schedule.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)irq.c
+	
+dma.o : $(SRC)dma.c io.o
+	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)dma.c
 	
 keyboard.o : $(SRC)keyboard.c irq.o interrupts.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)keyboard.c
 
-main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o irq.o memory.o gdt.o tss.o schedule.o string.o keyboard.o syscall.o floppy.o
+main.o : $(SRC)main.c kernel_lowlevel.o interrupts.o screen.o io.o memory.o gdt.o tss.o schedule.o irq.o string.o keyboard.o syscall.o dma.o floppy.o
 	$(CC) $(CFLAGS) -c -I$(INCLUDE) -o $@ $(SRC)main.c
 
 kernel_lowlevel.o : $(SRC)kernel_lowlevel.asm
