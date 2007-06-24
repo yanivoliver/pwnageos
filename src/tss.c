@@ -13,7 +13,7 @@ Date: 11/05/07
 /* Extern from kernel-lowlevel */
 extern void load_tr(ushort_t row);
 
-/* TSS Entry */
+/* Single tss entry */
 tss_t g_tss;
 ulong_t g_tss_entry_index = 0;
 
@@ -78,4 +78,15 @@ void set_tss_available()
 
 	/* Set the type */
 	tss_entry->type = TSS_TYPE_AVAILABLE;
+}
+
+tss_t * get_tss()
+{
+	/* Check that we allocated the tss */
+	if (0 == g_tss_entry_index) {
+		return NULL;
+	}
+
+	/* Return the tss */
+	return &g_tss;
 }

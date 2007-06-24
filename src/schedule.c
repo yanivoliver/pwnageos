@@ -5,6 +5,7 @@ Schedule handling
 */
 #include "common.h"
 #include "memory.h"
+#include "irq.h"
 #include "string.h"
 #include "process.h"
 #include "schedule.h"
@@ -18,12 +19,17 @@ ulong_t g_current_process_index = 0;
 ulong_t g_base_stack = 0x50000;
 ulong_t g_process_id = 0;
 process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
+bool_t g_scheduler_fixed_stack = FALSE;
 
 extern int getch();
 extern int getchar();
 extern int putch(int c);
 extern int gets(char * buffer);
 extern void puts(char * buffer);
+extern void fread(void * buffer, ulong_t length);
+
+extern void enable_interrupts();
+extern void disable_interrupts();
 
 ulong_t init_schedule()
 {
@@ -38,17 +44,20 @@ ulong_t init_schedule()
 					first entering multi-threaded mode */
 	g_process_list[0].next_process = &g_process_list[1];
 
+	/* Set initial status of stack fixing as false */
+	g_scheduler_fixed_stack = FALSE;
+
 	/* Process 1*/
 	idle_process_id = create_process(idle, "System");
 
 	/* Process 2 */
-	create_process(idle_fourth, "Testing simple input");
+	create_process(idle/*_fourth*/, "Testing simple input");
 	
 	/* Process 3 */
-	create_process(idle_second, "Testing interactive input");
+	create_process(idle/*_second*/, "Testing interactive input");
 
 	/* Process 4 */
-	create_process(idle_third, "Testing output");
+	create_process(idle/*_third*/, "Testing output");
 
 	/* Set the current process to the empty first entry */
 	g_current_process = NULL;
@@ -227,6 +236,7 @@ static ulong_t create_process(ulong_t entry_point, uchar_t * name)
 	/* Set information */
 	process->blocking = FALSE;
 	process->blocking_syscall = NULL;
+	process->kernel_mode = FALSE;
 	process->registers.ds = USER_DS;
 	process->registers.es = USER_DS;
 	process->registers.fs = USER_DS;
@@ -235,6 +245,17 @@ static ulong_t create_process(ulong_t entry_point, uchar_t * name)
 	process->registers.cs_iret = USER_CS;
 	process->registers.eip_iret = entry_point;
 	process->registers.eflags_iret = 0x0202;
+
+	process->kernel_stack = 0x400000 + (0x1000 * process->process_id);
+
+	process->registers_kernel.ds = KERNEL_DS;
+	process->registers_kernel.es = KERNEL_DS;
+	process->registers_kernel.fs = KERNEL_DS;
+	process->registers_kernel.ss_iret = KERNEL_DS;
+	process->registers_kernel.esp = process->kernel_stack;
+	process->registers_kernel.cs_iret = KERNEL_CS;
+	process->registers_kernel.eip_iret = entry_point;
+	process->registers_kernel.eflags_iret = 0x0202;
 
 	if (NULL != name) {
 		/* Copy name */
@@ -267,31 +288,65 @@ void schedule(ushort_t irq, registers_t * registers)
 {
 	/* Declare variables */
 	process_t * process = NULL;
+	registers_t * registers_pointer = NULL;
+	registers_t * registers_fixed = NULL;
+	tss_t * tss = NULL;
 	bool_t process_found = FALSE;
 	uchar_t input = 0;
 	ulong_t i = 0;
+
+	/* If we interruped another irq we dont need to reschedule now */
+	/* TODO: Reschedule flag after the interrupted irq finished */
+	if (TRUE == is_dispatching_irq()) {
+		//tss = get_tss();
+		//tss->ss_0 = KERNEL_DS;
+		//tss->esp_0 = g_current_process->registers_kernel.esp;
+		return;
+	}
 
 	if (NULL == g_current_process) {
 		g_current_process = g_head_process;
 	} else {
 		/* Save all registers to the current process */
-		g_current_process->registers.eax = registers->eax;
-		g_current_process->registers.ecx = registers->ecx;
-		g_current_process->registers.edx = registers->edx;
-		g_current_process->registers.ebx = registers->ebx;
-		g_current_process->registers.esp = registers->esp;
-		g_current_process->registers.ebp = registers->ebp;
-		g_current_process->registers.esi = registers->esi;
-		g_current_process->registers.edi = registers->edi;
-		g_current_process->registers.ds = registers->ds;
-		g_current_process->registers.es = registers->es;
-		g_current_process->registers.fs = registers->fs;
+		/* Check if we are saving kernel or user registers */
+		if (USER_CS == registers->cs_iret) {
+			registers_pointer = &g_current_process->registers;
 
-		g_current_process->registers.eip_iret = registers->eip_iret;
-		g_current_process->registers.cs_iret = registers->cs_iret;
-		g_current_process->registers.eflags_iret = registers->eflags_iret;
-		g_current_process->registers.esp_iret = registers->esp_iret;
-		g_current_process->registers.ss_iret = registers->ss_iret;
+			/* We freezed the process in USER mode */
+			g_current_process->kernel_mode = FALSE;
+		} else {
+			registers_pointer = &g_current_process->registers_kernel;
+
+			/* We freezed the process in KERNEL mode */
+			g_current_process->kernel_mode = TRUE;
+		}
+		registers_pointer->eax = registers->eax;
+		registers_pointer->ecx = registers->ecx;
+		registers_pointer->edx = registers->edx;
+		registers_pointer->ebx = registers->ebx;
+		registers_pointer->esp = registers->esp;
+		registers_pointer->ebp = registers->ebp;
+		registers_pointer->esi = registers->esi;
+		registers_pointer->edi = registers->edi;
+		registers_pointer->ds = registers->ds;
+		registers_pointer->es = registers->es;
+		registers_pointer->fs = registers->fs;
+
+		/* If its kernel mode we need to fix the esp */
+		if (TRUE == g_current_process->kernel_mode) {
+			registers_pointer->esp += 0x48;
+		}
+
+		registers_pointer->eip_iret = registers->eip_iret;
+		registers_pointer->cs_iret = registers->cs_iret;
+		registers_pointer->eflags_iret = registers->eflags_iret;
+
+		/* This values actualy exist only in the transition from kernel to user */
+		/* They are used in kernel registers to hold pointer to the stack */
+		if (FALSE == g_current_process->kernel_mode) {
+			registers_pointer->esp_iret = registers->esp_iret;
+			registers_pointer->ss_iret = registers->ss_iret;
+		}
 	}
 
 	while (TRUE != process_found) {
@@ -324,25 +379,65 @@ void schedule(ushort_t irq, registers_t * registers)
 		}
 	}
 
+	/* If we are going to return to a user mode thread when the interrupted thread is a kernel one
+	   we should fixup the stack and add 2 parameters of the ss and esp for the ring 0 to ring 3 change */
+	if (FALSE == g_current_process->kernel_mode && KERNEL_CS == registers->cs_iret) {
+		//memcpy(registers-0x8, registers, sizeof(registers_t));
+		registers_fixed = (registers_t *)(((ulong_t)registers)-0x8);
+		g_scheduler_fixed_stack = TRUE;
+	} else {
+		registers_fixed = registers;
+	}
+
+	/* Check if we are loading kernel or user registers */
+	if (FALSE == g_current_process->kernel_mode) {
+		registers_pointer = &g_current_process->registers;
+	} else {
+		registers_pointer = &g_current_process->registers_kernel;
+	}
+
 	/* Load new process's registers */
-	registers->eip_iret = g_current_process->registers.eip_iret;
-	registers->eax = g_current_process->registers.eax;
-	registers->ecx = g_current_process->registers.ecx;
-	registers->edx = g_current_process->registers.edx;
-	registers->ebx = g_current_process->registers.ebx;
-	registers->esp = g_current_process->registers.esp;
-	registers->ebp = g_current_process->registers.ebp;
-	registers->esi = g_current_process->registers.esi;
-	registers->edi = g_current_process->registers.edi;
-	registers->ds = g_current_process->registers.ds;
-	registers->es = g_current_process->registers.es;
-	registers->fs = g_current_process->registers.fs;
-	registers->eip_iret = g_current_process->registers.eip_iret;
-	registers->cs_iret = g_current_process->registers.cs_iret;
-	//registers->eflags_iret = g_current_process->registers.eflags_iret;
-	registers->eflags_iret = 0x0202;
-	registers->esp_iret = g_current_process->registers.esp_iret;
-	registers->ss_iret = g_current_process->registers.ss_iret;
+	registers_fixed->eip_iret = registers_pointer->eip_iret;
+	registers_fixed->eax = registers_pointer->eax;
+	registers_fixed->ecx = registers_pointer->ecx;
+	registers_fixed->edx = registers_pointer->edx;
+	registers_fixed->ebx = registers_pointer->ebx;
+	registers_fixed->esp = registers_pointer->esp;
+	registers_fixed->ebp = registers_pointer->ebp;
+	registers_fixed->esi = registers_pointer->esi;
+	registers_fixed->edi = registers_pointer->edi;
+	registers_fixed->ds = registers_pointer->ds;
+	registers_fixed->es = registers_pointer->es;
+	registers_fixed->fs = registers_pointer->fs;
+	registers_fixed->eip_iret = registers_pointer->eip_iret;
+	registers_fixed->cs_iret = registers_pointer->cs_iret;
+	registers_fixed->eflags_iret = g_current_process->registers.eflags_iret;
+
+	/* We change this values only when leaving to lower ring */
+	if (FALSE == g_current_process->kernel_mode) {
+		registers_fixed->esp_iret = g_current_process->registers.esp_iret;
+		registers_fixed->ss_iret = g_current_process->registers.ss_iret;
+		registers_fixed->eflags_iret = 0x0202;	
+	} else {
+		//registers_fixed->esp += 0x48;
+	}
+
+	/* Change the TSS values to the current's process kernel stack */
+	tss = get_tss();
+	if (NULL == tss)
+	{
+		// PANIC
+		for(;;) {
+			printf(NULL, "PANIC");
+		}
+	}
+
+	/* Change tss values only when jumping to user mode */
+	if (FALSE == g_current_process->kernel_mode) {
+		tss->ss_0 = KERNEL_DS;
+		//tss->esp_0 = g_current_process->registers_kernel.esp-0x48;
+		tss->esp_0 = g_current_process->kernel_stack;
+	}
 
 	/* From now on... the new process supposed to be loaded */
 }
@@ -359,6 +454,8 @@ void idle_second()
 	char buffer[100] = {0};
 	char ch = 0;
 	bool_t valid_choice = FALSE;
+	
+	//fread(buffer, 80);
 
 	for(;;) {
 		puts("===== IO Tests =====\n");
@@ -399,7 +496,7 @@ void idle_second()
 			break;
 		}
 		putch('\n');
-	}	
+	}
 }
 
 void idle_third()
@@ -415,11 +512,16 @@ void idle_third()
 
 void idle_fourth()
 {
-	char buffer[1024] = {0};
+	//char buffer[1024] = {0};
+	//ulong_t i = 0;
 	for(;;) {
-		gets(buffer);
+		//i++;
+		//if (0 == i % 99999) {
+			putch('A');
+		//}
+		/*gets(buffer);
 		puts(" / ");
 		puts(buffer);
-		putch('\n');
+		putch('\n');*/
 	}	
 }

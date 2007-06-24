@@ -6,12 +6,15 @@ Date: 04/05/07
 
 #include "common.h"
 #include "floppy.h"
+#include "syscall.h"
+#include "dma.h"
 #include "irq.h"
 #include "io.h"
 
-#define FLOPPY_DELAY_LOOPS	(50000)
+#define FLOPPY_DELAY_LOOPS	(999999)
 
 static floppy_drive_t g_floppy_drives[2] = {0};
+static floppy_sector_status_t g_sector_status = {0};
 static floppy_sense_interrupt_result_t g_sense_interrupt = {0};
 static ushort_t floppy_base_address[] = {0x3F0, 0x370};
 static bool_t g_floppy_pending = FALSE;
@@ -22,6 +25,8 @@ static char * g_floppy_types[6] =	{	"Not found",
 										"3.5\", 750kb",
 										"3.5\", 1.44mb",
 										"3.5\", 2.88mb"};
+
+static uchar_t g_floppy_types_gaps[6] =	{0, 42, 42, 27, 27, 27};
 
 void floppy_handler(ushort_t irq, registers_t * registers)
 {
@@ -116,7 +121,7 @@ bool_t floppy_motor_on()
 	}
 
 	/* Turn floppy motor */
-	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0x1C);
+	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0x14);
 
 	floppy_delay();
 
@@ -132,7 +137,7 @@ bool_t floppy_motor_off()
 	}
 
 	/* Turn floppy motor */
-	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0xC);
+	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0x4);
 
 	floppy_delay();
 
@@ -167,10 +172,57 @@ bool_t floppy_command_sense_interrupt()
 
 	/* Send the result */
 	g_sense_interrupt.status_0 = byte_1;
-	g_sense_interrupt.present_track = byte_2;
+	g_sense_interrupt.present_cylinder = byte_2;
 
 	/* Success */
 	return TRUE;
+}
+
+bool_t floppy_read_sector_status()
+{
+	/* Declare variables */
+	uchar_t byte_0 = 0;
+	uchar_t byte_1 = 0;
+	uchar_t byte_2 = 0;
+	uchar_t byte_3 = 0;
+	uchar_t byte_4 = 0;
+	uchar_t byte_5 = 0;
+	uchar_t byte_6 = 0;
+
+	/* Receive result byte 0 */
+	if (TRUE == floppy_receive_byte(&byte_0)) {
+		/* Receive result byte 0 */
+		if (TRUE == floppy_receive_byte(&byte_1)) {
+			/* Receive result byte 0 */
+			if (TRUE == floppy_receive_byte(&byte_2)) {
+				/* Receive result byte 0 */
+				if (TRUE == floppy_receive_byte(&byte_3)) {
+					/* Receive result byte 0 */
+					if (TRUE == floppy_receive_byte(&byte_4)) {
+						/* Receive result byte 0 */
+						if (TRUE == floppy_receive_byte(&byte_5)) {
+							/* Receive result byte 0 */
+							if (TRUE == floppy_receive_byte(&byte_6)) {
+								g_sector_status.status_0 = byte_0;
+								g_sector_status.status_1 = byte_1;
+								g_sector_status.status_2 = byte_2;
+								g_sector_status.cylinder = byte_3;
+								g_sector_status.head = byte_4;
+								g_sector_status.sector = byte_5;
+								g_sector_status.sector_length = byte_6;
+
+								/* Success */
+								return TRUE;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/* Failure */
+	return FALSE;
 }
 
 bool_t floppy_command_seek(uchar_t head, uchar_t cylinder)
@@ -180,6 +232,7 @@ bool_t floppy_command_seek(uchar_t head, uchar_t cylinder)
 	uchar_t byte_1 = 0;
 	uchar_t byte_2 = 0;
 	bool_t send_success = FALSE;
+	ulong_t retries = 0;
 
 	/* Set command byte */
 	byte_0 = FLOPPY_COMMAND_SEEK;
@@ -190,28 +243,156 @@ bool_t floppy_command_seek(uchar_t head, uchar_t cylinder)
 	/* Set cylinder */
 	byte_2 = cylinder;
 
-	while (TRUE != send_success) {
+	while (TRUE != send_success && retries < FLOPPY_RETRIES_SEEK) {
+		/* Set as pending for interrupt */
+		g_floppy_pending = TRUE;
+
 		/* Send byte 0 */
-		if (TRUE != floppy_send_byte(byte_0)) {
-			return FALSE;
+		if (TRUE == floppy_send_byte(byte_0)) {
+			/* Send byte 1 */
+			if (TRUE == floppy_send_byte(byte_1)) {
+				/* Send byte 2 */
+				if (TRUE == floppy_send_byte(byte_2)) {
+					floppy_delay_on_interrupt();
+					if (TRUE == floppy_command_sense_interrupt()) {
+						send_success = (cylinder == g_sense_interrupt.present_cylinder);
+					} else {
+						send_success = FALSE;
+					}
+				} else {
+					send_success = FALSE;
+				}
+			}  else {
+				send_success = FALSE;
+			}
+		} else {
+			send_success = FALSE;
 		}
 
-		/* Send byte 1 */
-		if (TRUE != floppy_send_byte(byte_1)) {
-			return FALSE;
-		}
-
-		/* Send byte 2 */
-		if (TRUE != floppy_send_byte(byte_2)) {
-			return FALSE;
-		}
-
-		floppy_delay_on_interrupt();
-		send_success = floppy_command_sense_interrupt();
+		/* Increace retries */
+		retries++;
 	}
 
 	/* Success */
-	return TRUE;
+	return send_success;
+}
+
+bool_t floppy_command_read_write(uchar_t head, uchar_t cylinder, uchar_t sector)
+{
+	/* Declare variables */
+	uchar_t byte_0 = 0;
+	uchar_t byte_1 = 0;
+	uchar_t byte_2 = 0;
+	uchar_t byte_3 = 0;
+	uchar_t byte_4 = 0;
+	uchar_t byte_5 = 0;
+	uchar_t byte_6 = 0;
+	uchar_t byte_7 = 0;
+	uchar_t byte_8 = 0;
+	bool_t send_success = FALSE;
+	ulong_t retries = 0;
+
+	/* Set command byte */
+	byte_0 = FLOPPY_COMMAND_READ;
+
+	/* Set as multitrack */
+	byte_0 |= 128;
+
+	/* Set as double density mode */
+	byte_0 |= 64;
+
+	/* Set as skip deleted sectors */
+	byte_0 |= 32;
+
+	/* Set head and drive byte */
+	byte_1 = ((head & 0x1) << 2) | (FLOPPY_A & 0x3);
+
+	/* Set cylinder */
+	byte_2 = cylinder;
+
+	/* Set head */
+	byte_3 = head;
+
+	/* Set sector */
+	byte_4 = sector;
+
+	/* Set sector size */
+	byte_5 = 2;
+
+	/* Set end of track */
+	byte_6 = sector;
+
+	/* Set gap length  */
+	byte_7 = g_floppy_types_gaps[g_floppy_drives[FLOPPY_A].type];
+
+	/* Set data length  */
+	byte_8 = 255;
+
+	while (TRUE != send_success && retries < FLOPPY_RETRIES_READ) {
+		/* Seek for the cylinder */
+		if (TRUE == floppy_command_seek(head, cylinder)) {
+			/* Set as pending for interrupt */
+			g_floppy_pending = TRUE;
+
+			/* Set initial value as failure */
+			send_success = FALSE;
+
+			/* Send byte 0 */
+			if (TRUE == floppy_send_byte(byte_0)) {
+				/* Send byte 1 */
+				if (TRUE == floppy_send_byte(byte_1)) {
+					/* Send byte 2 */
+					if (TRUE == floppy_send_byte(byte_2)) {
+						/* Send byte 3 */
+						if (TRUE == floppy_send_byte(byte_3)) {
+							/* Send byte 4 */
+							if (TRUE == floppy_send_byte(byte_4)) {
+								/* Send byte 5 */
+								if (TRUE == floppy_send_byte(byte_5)) {
+									/* Send byte 6 */
+									if (TRUE == floppy_send_byte(byte_6)) {
+										/* Send byte 7 */
+										if (TRUE == floppy_send_byte(byte_7)) {
+											/* Send byte 8 */
+											if (TRUE == floppy_send_byte(byte_8)) {
+												/* Wait for an interrupt */
+												printf(NULL, "WAITING FOR DATA...");
+												floppy_delay_on_interrupt();
+												printf(NULL, "Yeah ...");
+
+												/* Read sector status */
+												if (TRUE == floppy_read_sector_status()) {
+													if (g_sector_status.cylinder == cylinder &&
+														g_sector_status.head == head &&
+														g_sector_status.sector == sector &&
+														g_sector_status.sector_length == byte_4) {
+														
+														/* Success */
+														send_success = TRUE;
+													}
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		/* Recalibrate */
+		if (FALSE == send_success) {
+			floppy_command_recalibrate();
+		}
+
+		/* Increace retries */
+		retries++;
+	}
+
+	/* Success */
+	return send_success;
 }
 
 bool_t floppy_command_specify(uchar_t stepping_rate, uchar_t head_load, uchar_t head_unload, bool_t dma)
@@ -349,27 +530,9 @@ void floppy_list_drives()
 	printf(NULL, "    %cDrive B - %s\n", 0xAF, g_floppy_types[ g_floppy_drives[FLOPPY_B].type ]);
 }
 
-bool_t init_floppy()
+bool_t floppy_syscall_read(registers_t * registers, struct syscall_entry_rec * syscall_entry)
 {
-	/* Declare variables */
-	uchar_t floppy_detect = 0;
-
-	/* Setup irq */
-	install_irq_handler(6, floppy_handler);
-	enable_irq(6);
-
-	/* Set pending parameter */
-	g_floppy_pending = FALSE;
-
-	/* Set motor state */
-	g_floppy_motor = FALSE;
-
-	/* Check which floppy is alive */
-	out(0x70, 0x10);
-	floppy_detect = in(0x71);
-
-	g_floppy_drives[FLOPPY_A].type = (floppy_detect>>4) & 0xF;
-	g_floppy_drives[FLOPPY_B].type = floppy_detect & 0xF;
+	//uchar_t buffer[2] = {0};
 
 	/* Reset drive */
 	if (TRUE != floppy_reset()) {
@@ -397,16 +560,83 @@ bool_t init_floppy()
 			 Calculation: HUT = delay_seconds / 8000 * data_rate(=500000)
 			 Recommended: 240ms, HUT = 15
 	*/
-	if (TRUE != floppy_command_specify(8, 5, 15, FALSE)) {
-		return FALSE;
-	}
+	//if (TRUE != floppy_command_specify(8, 5, 15, FALSE)) {
+	//	return FALSE;
+	//}
 
 	/* Recalibrate */
 	floppy_command_recalibrate();
 
-	floppy_command_seek(0, 1);
+	dma_start(2, 0x1000, 9, 8);
+	
+	floppy_command_read_write(0, 0, 1);
 
-	//printf(NULL, "-> %X", g_sense_interrupt.present_track);
+	//printf(NULL, "-> %X", g_sense_interrupt.present_cylinder);
+	return TRUE;
+}
+
+bool_t init_floppy()
+{
+	/* Declare variables */
+	uchar_t floppy_detect = 0;
+
+	/* Setup irq */
+	install_irq_handler(6, floppy_handler);
+	enable_irq(6);
+
+	/* Set pending parameter */
+	g_floppy_pending = FALSE;
+
+	/* Set motor state */
+	g_floppy_motor = FALSE;
+
+	/* Check which floppy is alive */
+	out(0x70, 0x10);
+	floppy_detect = in(0x71);
+
+	g_floppy_drives[FLOPPY_A].type = (floppy_detect>>4) & 0xF;
+	g_floppy_drives[FLOPPY_B].type = floppy_detect & 0xF;
+
+	install_syscall_handler(0xF0, floppy_syscall_read, TRUE, floppy_syscall_read);
+
+	/* Reset drive */
+	//if (TRUE != floppy_reset()) {
+		/* Error resetting floppy */
+	//	return FALSE;
+	//}
+
+	/* Turn floppy motor on */
+	//if (TRUE != floppy_motor_on()) {
+		/* Error turnning floppy on */
+	//	return FALSE;
+	//}
+
+	/* Set the data rate */
+	//floppy_set_data_rate(FLOPPY_DATA_RATE_500);
+
+	/* Specify times */
+	/* SRT - Delay time for the head between tracks 
+			 Calculation: SRT = 16 - (delay_seconds * data_rate(=500000) / 500)
+			 Recommended: 8ms, SRT = 8
+	   HLT - Delay between the head movement and when its ready
+			 Calculation: HLT = delay_seconds / 1000 * data_rate(=500000)
+			 Recommended: 10ms, HLT = 5
+	   HUT - Delay after head finished moving
+			 Calculation: HUT = delay_seconds / 8000 * data_rate(=500000)
+			 Recommended: 240ms, HUT = 15
+	*/
+	//if (TRUE != floppy_command_specify(8, 5, 15, FALSE)) {
+	//	return FALSE;
+	//}
+
+	/* Recalibrate */
+	//floppy_command_recalibrate();
+
+	//dma_start(2, buffer, 512, DMA_READ);
+	
+	//floppy_command_read_write(0, 0, 1);
+
+	//printf(NULL, "-> %X", g_sense_interrupt.present_cylinder);
 
 	return TRUE;
 }

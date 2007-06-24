@@ -59,5 +59,13 @@ Parameters		: None
 */
 void set_tss_available();
 
+/*
+Function name	: get_tss
+Purpose			: Returns a pointer to the single tss entry
+Parameters		: None
+Returns			: Pointer to the tss entry
+*/
+tss_t * get_tss();
+
 #endif
 

@@ -20,25 +20,28 @@
 ; one which pushed a fake error code
 %macro basic_interrupt_handler 1
 align 16
-    ;cli
+	cli
     push    dword %1                ; push interrupt number
     jmp common_interrupt_handler    ; jump to common handler
 %endmacro
 
 %macro basic_interrupt_handler_with_error_code 1
 align 16
-    ;cli
-    push    dword 0                 ; Fake error code
+	cli
+    ;push    dword 0                 ; Fake error code
     push    dword %1                ; push interrupt number
-    jmp common_interrupt_handler    ; jump to common handler
+    jmp common_interrupt_handler_push_error_code    ; jump to common handler
 %endmacro
 
 ; ----------
 ; Defenitions
 ; ----------
-%define KERNEL_CS               (1<<3)
-%define KERNEL_DS               (2<<3)
-%define NUMBER_OF_IDT_ENTRIES   (256)
+%define KERNEL_CS						(1<<3)
+%define KERNEL_DS						(2<<3)
+%define NUMBER_OF_IDT_ENTRIES			(256)
+
+%define FIRST_EXTERNAL_INTERRUPT		(030h)
+%define NUMBER_OF_EXTERNAL_INTERRUPTS	(0Fh)
 
 ; Number of bytes between the top of the stack and
 ; the interrupt number after the general-purpose and segment
@@ -46,7 +49,7 @@ align 16
 %define INTERRUPT_NUMBER_OFFSET (11*4)
 %define INTERRUPT_ERROR_CODE_OFFSET (12*4)
 
-%define LATCH					(1193180/100)
+%define LATCH					(1193180/500)
 
 ; Get interrupt number from interrupt stack
 %macro GET_INTERRUPT_NUMBER 1
@@ -56,7 +59,7 @@ align 16
 ; Get interrupt error code from interrupt stack
 %macro GET_ERROR_CODE 1
     mov %1, [esp+INTERRUPT_ERROR_CODE_OFFSET]
-%endmacro   
+%endmacro
 
 
 ; 8259A PIC initialization codes.
@@ -106,6 +109,7 @@ EXPORT getch
 EXPORT putch
 EXPORT gets
 EXPORT puts
+EXPORT fread
 
 IMPORT g_idt_handlers
 IMPORT idle
@@ -114,6 +118,7 @@ IMPORT g_process
 IMPORT g_tss_entry_index
 IMPORT set_tss_available
 IMPORT printf
+IMPORT g_scheduler_fixed_stack
 
 
 ; ----------
@@ -131,7 +136,7 @@ IMPORT printf
 ; rectify it afterwards. Thus the bios puts interrupts at 0x08-0x0f,
 ; which is used for the internal hardware interrupts as well. We just
 ; have to reprogram the 8259's, and it isn't fun.
-g_first_external_interrupt  db 030h
+g_first_external_interrupt  db FIRST_EXTERNAL_INTERRUPT
 
 configure_pic:
     ; Initialize master and slave PIC!
@@ -165,25 +170,12 @@ configure_pic:
     call    delay
     
     ; Configure timer
-    ;mov al, 036h
-    ;out 043h, al
-    ;mov al, 00h
-	;out 040h, al
-	;mov al, 00h
-	;out 040h, al
-	;;mov al, 036h
-	;out 043h, al
-	;mov al, 09Bh
-	;out 040h, al
-	;mov al, 02Eh
-	;out 040h, al
-	
-	;mov al, 036h
-	;out 043h, al
-	;mov al, LATCH & 0ffh
-	;out 040h, al
-	;mov al, LATCH >> 8
-	;out 040h, al
+	mov al, 036h
+	out 043h, al
+	mov al, LATCH & 0ffh
+	out 040h, al
+	mov al, LATCH >> 8
+	out 040h, al
     
     ret
     
@@ -236,12 +228,7 @@ load_tr:
     
 ; Enable interrupts
 enable_interrupts:
-    sti
-    
-    mov al,0Fah       ; mask off all interrupts for now
-    out 021h,al
-    call delay
-    
+	sti    
     ret
 
 ; Disable interrupts
@@ -259,10 +246,17 @@ enter_user_mode:
     ;jmp dword (5<<3):00h
     ret
 
-; New interrupt handler
-common_interrupt_handler:     
-    cli
+common_interrupt_handler_push_error_code:
+	push eax
+	push eax
+	mov eax, [esp+08h]
+	mov dword [esp+08h], 0
+	mov dword [esp+04h], eax
+	pop eax
+	jmp common_interrupt_handler
 
+; New interrupt handler
+common_interrupt_handler:
     pusha
     push ds
     push es
@@ -278,6 +272,12 @@ common_interrupt_handler:
     GET_INTERRUPT_NUMBER(ebx)
     ;GET_ERROR_CODE(ebx)
     
+    ; Set the TSS values (which could be overwritten by interrupt handlers)
+    mov ecx, g_tss 
+    mov edx, esp
+    add edx, 040h
+    mov [ecx+4], edx
+    
     ; Find the appropriate interrupt handler
     mov eax, g_idt_handlers
     mov eax, [eax+ebx*4]
@@ -286,14 +286,44 @@ common_interrupt_handler:
     test eax, eax
     jz .no_handler_found
     
+    ; Check if its a critical interrupt which cannot be interrupted
+    ;;cmp ebx, FIRST_EXTERNAL_INTERRUPT	; Which is the scheduler interrupt
+    ;;jnz .interrupt_not_critical
+    cmp ebx, FIRST_EXTERNAL_INTERRUPT
+    jl .interrupt_not_critical
+    cmp ebx, FIRST_EXTERNAL_INTERRUPT+NUMBER_OF_EXTERNAL_INTERRUPTS
+    jg .interrupt_not_critical
+    
+    ; ** Critical interrupt    
     ; Call the found handler
     ; Add the interrupt number parameter
     mov edx, esp
     push edx
     push ebx
     call eax
+    
+    ; We should pop of this values only if the stack wasnt fixed by the scheduler handler
+    lea eax, [g_scheduler_fixed_stack]
+    test dword [eax], 1
+    mov dword [eax], 0
+    jnz .interrupt_post_handler
     pop ebx
     pop ebx
+
+.interrupt_post_handler:
+    ; Continue the common handler
+    jmp .continue_common_handler
+    
+    ; ** Non critical interrupt
+.interrupt_not_critical:
+	sti
+	mov edx, esp
+    push edx
+    push ebx
+   call eax
+    pop ebx
+    pop ebx
+	cli
     
     ; Continue the common handler
     jmp .continue_common_handler
@@ -309,14 +339,7 @@ common_interrupt_handler:
     pop eax
     pop ebx
     
-.continue_common_handler :
-    ; Set the tss values
-    ; TODO - ESP gets wrong here I think ...
-    mov eax, g_tss
-    mov ebx, esp
-    add ebx, 048h
-    mov [eax+4], ebx
-    
+.continue_common_handler :   
     pop fs
     pop es
     pop ds
@@ -377,6 +400,23 @@ gets:
     
     mov ah, 00Ah
     mov edx, [ebp+8]
+    int 021h
+    
+    pop edx
+    pop ebx                  
+    pop ebp
+    ret
+    
+; int fread(void * buffer, ulong_t length);
+fread:
+    push ebp
+    mov ebp, esp
+    push ebx
+    push edx
+    
+    mov ah, 0F0h
+    mov ebx, [ebp+0Ch]
+    mov edx, [ebp+08h]
     int 021h
     
     pop edx

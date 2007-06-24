@@ -17,6 +17,8 @@ void syscall_handler(ushort_t interrupt_number, registers_t * registers)
 	bool_t results = FALSE;
 	bool_t reschedule = FALSE;
 
+	return;
+
 	/* Get the current process */
 	process = get_current_process();
 

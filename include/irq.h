@@ -19,6 +19,7 @@ This file is taken as is from GeekOS and altered to fit the project
 #define IRQ_HIGH_LIMIT			(15)
 #define IRQ_LOW_LIMIT			(0)
 
+
 /* Irq handler */
 typedef void (*irq_handler_t)(ushort_t irq, registers_t * registers);
 
@@ -59,5 +60,30 @@ Parameters		: interrupt_number - The number of the interrupt
 				  registers - Thread registers
 */
 void common_irq_handler(ushort_t interrupt_number, registers_t * registers);
+
+/*
+Function name	: is_irq_interrupt
+Purpose			: Checks whether an interrupt number is an irq or not
+Parameters		: interrupt_number - The number of the interrupt
+				  registers - Thread registers
+*/
+bool_t is_irq_interrupt(ulong_t interrupt_number);
+
+/*
+Function name	: is_dispatching_irq
+Purpose			: Check wether an irq is dispatching
+Parameters		: None
+Returns			: TRUE - IRQ is dispatching
+				  FALSE - IRQ is not dispatching
+*/
+bool_t is_dispatching_irq();
+
+/*
+Function name	: set_irq_dispatching
+Purpose			: Set the irq dispatching status
+Parameters		: dispatch - Is irq dispatching
+Returns			: void
+*/
+void set_irq_dispatching(bool_t dispatch);
 
 #endif
