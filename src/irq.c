@@ -162,7 +162,7 @@ void common_irq_handler(ushort_t interrupt_number, registers_t * registers)
 		/* If its not the PIT, enable interrupts */
 		if (0 != irq) {
 			set_irq_dispatching(TRUE);
-			enable_interrupts();
+			//enable_interrupts();
 		}
 
 		/* Find and appropriate irq handler */
@@ -176,7 +176,7 @@ void common_irq_handler(ushort_t interrupt_number, registers_t * registers)
 
 		/* If its not the PIT, disable interrupts */
 		if (0 != irq) {
-			disable_interrupts();
+			//disable_interrupts();
 			set_irq_dispatching(FALSE);
 		}		
 	}
