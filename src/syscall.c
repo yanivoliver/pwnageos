@@ -9,6 +9,9 @@ Author: Shimi G
 /* Set the syscall table */
 syscall_entry_t g_syscall_table[NUMBER_OF_SYSCALL_ENTRIES] = {0};
 
+extern void enable_interrupts();
+extern void disable_interrupts();
+
 void syscall_handler(ushort_t interrupt_number, registers_t * registers)
 {
 	/* Declare variables */
@@ -17,7 +20,7 @@ void syscall_handler(ushort_t interrupt_number, registers_t * registers)
 	bool_t results = FALSE;
 	bool_t reschedule = FALSE;
 
-	return;
+	bool_t restore_interrupts = FALSE;
 
 	/* Get the current process */
 	process = get_current_process();
@@ -28,7 +31,9 @@ void syscall_handler(ushort_t interrupt_number, registers_t * registers)
 	/* Check key bounds */
 	if (key < NUMBER_OF_SYSCALL_ENTRIES && 0 != g_syscall_table[key].key) {
 		/* Key is valid */
+		//enable_interrupts();
 		results = g_syscall_table[key].handler(registers, &g_syscall_table[key]);
+		//disable_interrupts();
 		if (TRUE == g_syscall_table[key].blocking && FALSE == results) {
 			/* Failed to get results and its a blocking syscall */
 			process->blocking = TRUE;
@@ -41,6 +46,7 @@ void syscall_handler(ushort_t interrupt_number, registers_t * registers)
 
 	/* Check if we need to rechedule */
 	if (TRUE == reschedule) {
+		disable_interrupts();
 		schedule(0, registers);
 	}
 }
