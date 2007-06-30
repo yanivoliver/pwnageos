@@ -15,6 +15,7 @@ Author: Shimi G.
 #define TRAP_GATE_SIGNATURE			(0x78)
 #define INTERRUPT_HIGH_LIMIT		(256)
 #define INTERRUPT_LOW_LIMIT			(0)
+#define EFLAGS_IF					(0x200)
 
 /* Entry for an IDT interrupt */
 typedef struct idt_interrupt_entry_rec {
@@ -82,6 +83,26 @@ Return			: TRUE - Success
 				  FALSE - Failure
 */
 bool_t uninstall_interrupt_handler(ushort_t interrupt_number);
+
+/*
+Function name	: is_interrupts_enabled
+Purpose			: Check if interrupts are enabled or not
+Parameters		: None
+Return			: TRUE - Interrupts are enabled
+				  FALSE - Interrupts are disabled
+*/
+bool_t is_interrupts_enabled();
+
+/*
+Function name	: atomic_disable_interrupts
+Purpose			: Disable interrupts only if they are not disabled, it will return the previous state
+				  which could be recovered using atomic_enable_interrupts
+Parameters		: None
+Return			: TRUE - Interrupts are enabled
+				  FALSE - Interrupts are disabled
+*/
+bool_t atomic_disable_interrupts();
+void atomic_enable_interrupts(bool_t restore_interrupts);
 
 /* Temp function for debug */
 void gpf_handler(ushort_t interrupt_number, registers_t * registers);

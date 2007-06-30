@@ -30,6 +30,9 @@ keyboard_queue_entry key_buffer[KEY_QUEUE_SIZE] = {{0, 0}};
 int g_current_key = KEYQUEUE_NEW_QUEUE;
 int g_empty_node = 0;
 
+extern void enable_interrupts();
+extern void disable_interrupts();
+
 void insert_keycode_to_queue(input_t * input, uchar_t scan_code, uchar_t control_keys)
 {
 	/* Check if there are no empty nodes */
@@ -230,8 +233,9 @@ bool_t syscall_char_read_echo_recall(registers_t * registers, struct syscall_ent
 	} else {
 		/* Found character, set the return value inside eax */
 		registers->eax = input;
-
+		////disable_interrupts();
 		printf(&process->console, "%c", input);
+		////enable_interrupts();
 
 		/* Return success*/
 		return TRUE;
@@ -287,7 +291,9 @@ bool_t syscall_string_read_echo_recall(registers_t * registers, struct syscall_e
 			memcpy(registers->edx, &input, 1);
 			registers->edx++;
 
+			////disable_interrupts();
 			printf(&process->console, "%c", input);
+			////enable_interrupts();
 
 			/* Return false */
 			return FALSE;
@@ -314,12 +320,7 @@ bool_t syscall_char_write(registers_t * registers, struct syscall_entry_rec * sy
 	uchar_t output = 0;
 	process_t * process = NULL;
 	ulong_t i = 0;
-
-	//for(i = 0; i < 0xFFFFFFFF; i++) {
-	//}
-	return TRUE;
-
-
+	bool_t restore_interrupts = FALSE;
 
 	/* Get outut char from DL */
 	output = registers->edx & 0xFF;
@@ -349,6 +350,7 @@ bool_t syscall_string_write(registers_t * registers, struct syscall_entry_rec * 
 	uchar_t * output = NULL;
 	process_t * process = NULL;
 	ulong_t i = 0;
+	bool_t restore_interrupts = FALSE;
 
 	/* Get outut char from DL */
 	output = registers->edx;
@@ -356,10 +358,6 @@ bool_t syscall_string_write(registers_t * registers, struct syscall_entry_rec * 
 	/* Set return value */
 	registers->eax &= 0xFFFFFF00;
 	registers->eax |= 0x00000024;
-
-	for (i = 0; i < 0xFF; i++)
-	{
-	}
 
 	/* Print the character */
 	process = get_current_process();

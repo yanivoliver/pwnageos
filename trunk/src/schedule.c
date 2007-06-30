@@ -13,13 +13,18 @@ Schedule handling
 #include "keyboard.h"
 #include "tss.h"
 
+#define STACK_DONT_FIX				(0)
+#define STACK_FIX_KERNEL_TO_USER	(1)
+#define STACK_FIX_USER_TO_KERNEL	(2)
+
 process_t * g_current_process = NULL;
 process_t * g_head_process = NULL;
 ulong_t g_current_process_index = 0;
 ulong_t g_base_stack = 0x50000;
 ulong_t g_process_id = 0;
 process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
-bool_t g_scheduler_fixed_stack = FALSE;
+ulong_t g_scheduler_fixed_stack = STACK_DONT_FIX;
+bool_t g_scheduling_enabled = FALSE;
 
 extern int getch();
 extern int getchar();
@@ -51,13 +56,13 @@ ulong_t init_schedule()
 	idle_process_id = create_process(idle, "System");
 
 	/* Process 2 */
-	create_process(idle/*_fourth*/, "Testing simple input");
+	create_process(idle_fourth, "Testing simple input");
 	
 	/* Process 3 */
 	create_process(idle/*_second*/, "Testing interactive input");
 
 	/* Process 4 */
-	create_process(idle/*_third*/, "Testing output");
+	create_process(idle_third, "Testing output");
 
 	/* Set the current process to the empty first entry */
 	g_current_process = NULL;
@@ -205,6 +210,11 @@ static void * allocate_process_memory()
 	return NULL;
 }
 
+bool_t is_scheduling_enabled()
+{
+	return g_scheduling_enabled;
+}
+
 /*
 Function: create_process
 Purpse: Create a running process
@@ -295,12 +305,15 @@ void schedule(ushort_t irq, registers_t * registers)
 	uchar_t input = 0;
 	ulong_t i = 0;
 
+	g_scheduling_enabled = TRUE;
+
 	/* If we interruped another irq we dont need to reschedule now */
 	/* TODO: Reschedule flag after the interrupted irq finished */
 	if (TRUE == is_dispatching_irq()) {
 		//tss = get_tss();
 		//tss->ss_0 = KERNEL_DS;
 		//tss->esp_0 = g_current_process->registers_kernel.esp;
+		//printf(NULL, "[PROC]");
 		return;
 	}
 
@@ -334,7 +347,9 @@ void schedule(ushort_t irq, registers_t * registers)
 
 		/* If its kernel mode we need to fix the esp */
 		if (TRUE == g_current_process->kernel_mode) {
-			registers_pointer->esp += 0x48;
+			registers_pointer->esp += 0x14;
+		} else {
+			registers_pointer->esp += 0x28;
 		}
 
 		registers_pointer->eip_iret = registers->eip_iret;
@@ -382,9 +397,11 @@ void schedule(ushort_t irq, registers_t * registers)
 	/* If we are going to return to a user mode thread when the interrupted thread is a kernel one
 	   we should fixup the stack and add 2 parameters of the ss and esp for the ring 0 to ring 3 change */
 	if (FALSE == g_current_process->kernel_mode && KERNEL_CS == registers->cs_iret) {
-		//memcpy(registers-0x8, registers, sizeof(registers_t));
 		registers_fixed = (registers_t *)(((ulong_t)registers)-0x8);
-		g_scheduler_fixed_stack = TRUE;
+		g_scheduler_fixed_stack = STACK_FIX_KERNEL_TO_USER;
+	} else if (TRUE == g_current_process->kernel_mode && USER_CS == registers->cs_iret) {
+		registers_fixed = (registers_t *)(((ulong_t)registers)+0x8);
+		g_scheduler_fixed_stack = STACK_FIX_USER_TO_KERNEL;
 	} else {
 		registers_fixed = registers;
 	}
@@ -412,32 +429,22 @@ void schedule(ushort_t irq, registers_t * registers)
 	registers_fixed->eip_iret = registers_pointer->eip_iret;
 	registers_fixed->cs_iret = registers_pointer->cs_iret;
 	registers_fixed->eflags_iret = g_current_process->registers.eflags_iret;
+	registers_fixed->eflags_iret |= 0x202;
 
 	/* We change this values only when leaving to lower ring */
 	if (FALSE == g_current_process->kernel_mode) {
 		registers_fixed->esp_iret = g_current_process->registers.esp_iret;
 		registers_fixed->ss_iret = g_current_process->registers.ss_iret;
-		registers_fixed->eflags_iret = 0x0202;	
-	} else {
-		//registers_fixed->esp += 0x48;
+		
 	}
 
 	/* Change the TSS values to the current's process kernel stack */
 	tss = get_tss();
-	if (NULL == tss)
-	{
-		// PANIC
-		for(;;) {
-			printf(NULL, "PANIC");
-		}
-	}
 
-	/* Change tss values only when jumping to user mode */
-	if (FALSE == g_current_process->kernel_mode) {
-		tss->ss_0 = KERNEL_DS;
-		//tss->esp_0 = g_current_process->registers_kernel.esp-0x48;
-		tss->esp_0 = g_current_process->kernel_stack;
-	}
+	/* Change tss values */
+	tss->ss_0 = KERNEL_DS;
+	tss->esp_0 = g_current_process->kernel_stack;
+	g_current_process->kernel_mode = FALSE;
 
 	/* From now on... the new process supposed to be loaded */
 }
@@ -501,27 +508,23 @@ void idle_second()
 
 void idle_third()
 {
-	ulong_t i = 0;
+	uchar_t i = 'A';
 	for(;;) {
 		i++;
-		if (0 == i % 99999) {
-			puts("Writing,");
+		putch('A');
+		if ('J' == i) {
+			i = 'A'-1;
 		}
 	}	
 }
 
 void idle_fourth()
 {
-	//char buffer[1024] = {0};
-	//ulong_t i = 0;
+	char buffer[1024] = {0};
 	for(;;) {
-		//i++;
-		//if (0 == i % 99999) {
-			putch('A');
-		//}
-		/*gets(buffer);
+		gets(buffer);
 		puts(" / ");
 		puts(buffer);
-		putch('\n');*/
+		putch('\n');
 	}	
 }

@@ -20,14 +20,14 @@
 ; one which pushed a fake error code
 %macro basic_interrupt_handler 1
 align 16
-	cli
+	;cli
     push    dword %1                ; push interrupt number
     jmp common_interrupt_handler    ; jump to common handler
 %endmacro
 
 %macro basic_interrupt_handler_with_error_code 1
 align 16
-	cli
+	;cli
     ;push    dword 0                 ; Fake error code
     push    dword %1                ; push interrupt number
     jmp common_interrupt_handler_push_error_code    ; jump to common handler
@@ -38,7 +38,13 @@ align 16
 ; ----------
 %define KERNEL_CS						(1<<3)
 %define KERNEL_DS						(2<<3)
+%define USER_CS							((3<<3)|(0x0003))
+%define USER_DS							((4<<3)|(0x0003))
 %define NUMBER_OF_IDT_ENTRIES			(256)
+
+%define STACK_DONT_FIX					(0)
+%define STACK_FIX_KERNEL_TO_USER		(1)
+%define STACK_FIX_USER_TO_KERNEL		(2)
 
 %define FIRST_EXTERNAL_INTERRUPT		(030h)
 %define NUMBER_OF_EXTERNAL_INTERRUPTS	(0Fh)
@@ -59,6 +65,21 @@ align 16
 ; Get interrupt error code from interrupt stack
 %macro GET_ERROR_CODE 1
     mov %1, [esp+INTERRUPT_ERROR_CODE_OFFSET]
+%endmacro
+
+; Get the CS
+%macro GET_CS 1
+    mov %1, [esp+(14*4)]
+%endmacro
+
+; Get the EFLAGS
+%macro GET_EFLAGS 1
+    mov %1, [esp+(15*4)]
+%endmacro
+
+; Set the EFLAGS
+%macro SET_EFLAGS 1
+    mov [esp+(15*4)], %1
 %endmacro
 
 
@@ -97,6 +118,7 @@ EXPORT configure_pic
 
 EXPORT enable_interrupts
 EXPORT disable_interrupts
+EXPORT get_eflags
 
 EXPORT g_basic_interrupt_handlers_table
 EXPORT g_basic_interrupt_handler_size
@@ -268,14 +290,19 @@ common_interrupt_handler:
     mov es, ax
     mov fs, ax
     
+    ; Update the IF to be set, KERNEL and USER
+    GET_EFLAGS(ecx)
+    or ecx, 0x200
+    SET_EFLAGS(ecx)
+    
     ; Get the interrupt number
     GET_INTERRUPT_NUMBER(ebx)
     ;GET_ERROR_CODE(ebx)
-    
+        
     ; Set the TSS values (which could be overwritten by interrupt handlers)
     mov ecx, g_tss 
     mov edx, esp
-    add edx, 040h
+    add edx, 048h
     mov [ecx+4], edx
     
     ; Find the appropriate interrupt handler
@@ -304,9 +331,23 @@ common_interrupt_handler:
     
     ; We should pop of this values only if the stack wasnt fixed by the scheduler handler
     lea eax, [g_scheduler_fixed_stack]
-    test dword [eax], 1
-    mov dword [eax], 0
+    cmp dword [eax], STACK_DONT_FIX
+    jz .interrupt_pop_handler_arguments
+    
+    cmp dword [eax], STACK_FIX_KERNEL_TO_USER
+    jnz .interrupt_check_user_fix
+    
+    mov dword [eax], STACK_DONT_FIX
+    jmp .interrupt_post_handler
+    
+.interrupt_check_user_fix:
+	cmp dword [eax], STACK_FIX_USER_TO_KERNEL
     jnz .interrupt_post_handler
+    add esp, 010h
+    mov dword [eax], STACK_DONT_FIX
+    jmp .continue_internal_kernel_handler
+
+.interrupt_pop_handler_arguments:
     pop ebx
     pop ebx
 
@@ -320,7 +361,7 @@ common_interrupt_handler:
 	mov edx, esp
     push edx
     push ebx
-   call eax
+    call eax
     pop ebx
     pop ebx
 	cli
@@ -339,7 +380,7 @@ common_interrupt_handler:
     pop eax
     pop ebx
     
-.continue_common_handler :   
+.continue_common_handler:   
     pop fs
     pop es
     pop ds
@@ -347,7 +388,64 @@ common_interrupt_handler:
     
     ; Skip the interrupt number and error code
     add esp, 8
+    
     iretd
+    
+.continue_internal_kernel_handler: 
+	; When switching two threads inside the kernel,
+	; we will use simple ret. So we need to fix the stack alittle ..
+	; Backup for EAX will be written on the new thread's stack
+	; Then EAX will be filled with the new esp
+	; then we will write on the new thread's stack the return address and eflags
+	; then we will set the new ESP, pop the original value of eax (from the second stack)
+	; and do a ret (which will pop off EIP from the second stack)
+	; We assume that thread switched doesnt use another CS...
+	;  ## BEFORE
+	;  | Thread 1 Stack |     | Thread 2 Stack |
+	;  | EIP            |	  |				   |
+	;  | CS	  	    	|	  |				   |
+	;  | EFLAGS 		|     |				   |
+	;   
+	;  ## AFTER
+	;  | Thread 1 Stack |     | Thread 2 Stack |
+	;  |				|	  |	ORIGINAL EAX   |
+	;  |				|     | EFLAGS		   |
+	;  |				|	  |	EIP			   |
+	pop fs
+	pop es
+	pop ds
+	mov eax, dword [esp+0Ch]		; Load the new ESP
+	mov ebx, dword [esp+028h]		; Load the new EIP
+	mov ecx, dword [esp+02Ch]		; Load the new CS
+	mov edx, dword [esp+030h]		; Load the new EFLAGS
+	mov dword [eax-04h], edx		; Write to the destination stack the EFLAGS
+	mov dword [eax-08h], ecx		; Write to the destination stack the CS
+	mov dword [eax-0Ch], ebx		; Write to the destination stack the EIP
+	
+	; Put the new ESP on the stack
+	push eax
+	add esp, 04h
+	
+	; Pop all registers
+	popa
+	
+	; Clear the stack
+	add esp, 014h
+	
+	; Load the new esp which is lower on the stack
+	xchg esp, dword [esp-038h]
+	
+	; We loaded 3 arguments to the stack
+	sub esp, 0Ch
+	
+	; Just make a regular iret
+	iret
+
+; Get eflags
+get_eflags:
+	pushf
+	pop eax
+	ret
 
 ; Enter into an infintie loop
 align 8

@@ -79,6 +79,8 @@ Returns			: Success - Process, Failure - NULL
 */
 process_t * get_prev_process(process_t * process_seek);
 
+bool_t is_scheduling_enabled();
+
 /*
 Function name	: idle
 Purpose			: To do nothing :)

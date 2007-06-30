@@ -111,6 +111,7 @@ Purpose			: Print string to the screen
 Parameters		: string - the string
 */
 void printf(console_t * console, const char * string, ...);
+//void printf2(console_t * console, const char * string, ...);
 
 /*
 Function name	: print_character

@@ -4,6 +4,7 @@ Author: Shimi G.
 */
 #include "common.h"
 #include "interrupts.h"
+#include "irq.h"
 #include "schedule.h"
 #include "tss.h"
 
@@ -11,6 +12,7 @@ extern void configure_pic();
 extern void load_ldtr(ushort_t * row);
 extern void enable_interrupts();
 extern void disable_interrupts();
+extern ulong_t get_eflags();
 
 extern void g_basic_interrupt_handlers_table();
 extern ulong_t g_basic_interrupt_handler_size;
@@ -46,7 +48,7 @@ void init_idt()
 	/* Loop all idt entries */
 	for (i = 0; i < NUMBER_OF_IDT_ENTRIES; i++) {
 		/* Initialize as interrupt gate */
-		init_trap_gate(&g_idt_table[i], KERNEL_PRIVILEGE, handler_entry);
+		init_interrupt_gate(&g_idt_table[i], KERNEL_PRIVILEGE, handler_entry);
 
 		/* Move to the next entry in the handler table */
 		handler_entry += handler_size;
@@ -128,6 +130,34 @@ bool_t install_interrupt_handler(ushort_t interrupt_number, interrupt_handler_t 
 
 	/* Return success */
 	return TRUE;
+}
+
+bool_t is_interrupts_enabled()
+{
+	ulong_t eflags = 0;	
+	eflags = get_eflags();
+	if (0 == EFLAGS_IF & eflags) {
+		return FALSE;
+	} else {
+		return TRUE;
+	}
+}
+
+bool_t atomic_disable_interrupts()
+{
+	bool_t interrupts_enabled = is_interrupts_enabled();
+	if (TRUE == interrupts_enabled && TRUE == is_scheduling_enabled())	{
+		disable_interrupts();
+	}
+
+	return interrupts_enabled;
+}
+
+void atomic_enable_interrupts(bool_t restore_interrupts)
+{
+	if (TRUE == restore_interrupts && TRUE == is_scheduling_enabled()) {
+		enable_interrupts();
+	}
 }
 
 bool_t set_interrupt_dpl(ushort_t interrupt_number, ushort_t dpl)

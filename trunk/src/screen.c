@@ -5,6 +5,7 @@ Author: Shimi G.
 #include "common.h"
 #include "schedule.h"
 #include "io.h"
+#include "interrupts.h"
 #include "memory.h"
 #include "string.h"
 #include "screen.h"
@@ -19,16 +20,10 @@ Author: Shimi G.
 process_t * g_default_process = NULL;	/* Default console if nothing else is found, should be pointing to idle console */
 process_t * g_viewing_process = NULL;	/* The one that viewed currently to the screen */
 
-
 void show_console(console_t * console)
 {
 	/* Declare variables */
 	process_t * process = NULL;
-
-	/* Check references */
-	if (NULL == console) {
-		return;
-	}
 
 	/* Check console variable */
 	if (NULL == console) {
@@ -116,7 +111,7 @@ bool_t init_screen(ulong_t process_id)
 	//draw_header(process->name);
 
 	/* Invalidate */
-	//screen_update(TRUE);
+	screen_update(&process->console, TRUE);
 
 	/* Return success*/
 	return TRUE;
@@ -126,6 +121,10 @@ void screen_update(console_t * console, bool_t forced)
 {
 	/* Variables */
 	uchar_t * video_memory = NULL;
+	bool_t restore_interrupts = FALSE;
+	console_t * console_drawing = NULL;
+	ulong_t draw_part = SCREEN_COLUMNS*SCREEN_ROWS*2/200;
+	ulong_t i = 0;
 
 	/* Check console variable */
 	if (NULL == console) {
@@ -133,17 +132,36 @@ void screen_update(console_t * console, bool_t forced)
 		console = &g_default_process->console;
 	}
 
+	/* Set video memory */
+	video_memory = (uchar_t *)SCREEN_SEGMENT;
+	
+	restore_interrupts = atomic_disable_interrupts();
+
 	/* Check if viewing console is the working one */
 	if (TRUE != forced && &g_viewing_process->console != console) {
 		/* We dont need to redraw anything */
 		return;
+	} else {
+		console_drawing = console;
 	}
 
-	/* Set video memory */
-	video_memory = (uchar_t *)SCREEN_SEGMENT;
+	atomic_enable_interrupts(restore_interrupts);
+
+	for (i = 0; i <= SCREEN_COLUMNS*SCREEN_ROWS*2; i+=draw_part) {
+		restore_interrupts = atomic_disable_interrupts();
+		if (console_drawing == &g_viewing_process->console) {
+			memcpy(video_memory+i, console_drawing->screen+i, draw_part);
+		} else {
+			atomic_enable_interrupts(restore_interrupts);
+			return;
+		}
+		atomic_enable_interrupts(restore_interrupts);
+	}
 
 	/* Copy the console to the shared screen memory */
-	memcpy(video_memory, g_viewing_process->console.screen, SCREEN_COLUMNS*SCREEN_ROWS*2);
+	
+
+	
 }
 
 void clrscr(console_t * console)
@@ -397,7 +415,7 @@ void printf(console_t * console, const char * string, ...)
 		/* Move the pointer to the next character */
 		i++;
 	}
-
+	
 	/* Update the screen */
 	screen_update(console, FALSE);
 }
@@ -428,6 +446,7 @@ char convert_number_to_printable(ushort_t number)
 
 void print_character(console_t * console, uchar_t ** video_memory, uchar_t character)
 {
+	
 	/* Check console variable */
 	if (NULL == console) {
 		/* Set to defauly console */
@@ -499,6 +518,7 @@ void calculate_screen_bounds(console_t * console)
 	uchar_t * video_memory = NULL;
 	ushort_t i = 0;
 	ushort_t x = 0;
+	bool_t restore_interrupts = FALSE;
 
 	/* Check console variable */
 	if (NULL == console) {
