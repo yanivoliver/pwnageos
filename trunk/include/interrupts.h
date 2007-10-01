@@ -13,6 +13,7 @@ Author: Shimi G.
 #define IDT_ENTRY_SIZE				(8)
 #define INTERRUPT_GATE_SIGNATURE	(0x70)
 #define TRAP_GATE_SIGNATURE			(0x78)
+#define CALL_GATE_SIGNATURE			(0x28)
 #define INTERRUPT_HIGH_LIMIT		(256)
 #define INTERRUPT_LOW_LIMIT			(0)
 #define EFLAGS_IF					(0x200)
@@ -54,6 +55,7 @@ Parameters		: entry - IDT entry
 */
 void init_interrupt_gate(idt_interrupt_entry_t * entry, ushort_t dpl, ulong_t address);
 void init_trap_gate(idt_interrupt_entry_t * entry, ushort_t dpl, ulong_t address);
+bool_t install_call_gate(ushort_t interrupt_number, ushort_t dpl, ulong_t tss_entry_index);
 
 /*
 Function name	: install_interrupt_handler

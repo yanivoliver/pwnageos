@@ -17,59 +17,100 @@ extern void load_tr(ushort_t row);
 tss_t g_tss;
 ulong_t g_tss_entry_index = 0;
 
+tss_entry_t g_tss_table[NUMBER_OF_TSS_ENTRIES] __attribute__ ((aligned (16)));
+
 bool_t init_tss()
 {
 	/* Declare variables */
 	ulong_t tss_entry_index = 0;
 	gdt_entry_t * tss_entry = NULL;
 
+	/* Clear the tss table */
+	memset(&g_tss_table[0], '\0', sizeof(tss_entry_t)*NUMBER_OF_TSS_ENTRIES);
+
+	/* Success */
+	return TRUE;
+}
+
+bool_t allocate_tss_entry(ulong_t tss_entry_index, tss_t ** tss)
+{
+	/* Declare variables */
+	ulong_t i = 0;
+
+	/* Check references */
+	if (NULL == tss) {
+		/* Bad references */
+		return FALSE;
+	}
+
+	/* Loop */
+	for (i = 1; i < NUMBER_OF_TSS_ENTRIES; i++) {
+		if (TRUE != g_tss_table[i].used) {
+			/* Set entry as unavailble */
+			g_tss_table[i].used = TRUE;
+			g_tss_table[i].tss_entry_index = tss_entry_index;
+
+			/* Set the OUT variable */
+			(*tss) = &g_tss_table[i].tss;
+
+			/* Return true */
+			return TRUE;
+		}
+	}
+
+	/* No entry found. Return false */
+	return FALSE;
+}
+
+ulong_t create_tss()
+{
+	/* Declare variables */
+	ulong_t tss_entry_index = 0;
+	gdt_entry_t * tss_entry = NULL;
+	tss_t * tss = NULL;
+
 	/* Set gdt entry of the tss record */
 	if (TRUE != allocate_gdt_entry(&tss_entry_index))
 	{
 		/* Error allocating gdt entry */
-		return FALSE;
+		return 0;
 	}
 
 	/* Get gdt */
 	tss_entry = get_gdt_entry(tss_entry_index);
 	if (NULL == tss_entry) {
 		/* Error allocating gdt entry */
-		return FALSE;
+		return 0;
 	}
 
-	/* Set global tss index */
-	g_tss_entry_index = tss_entry_index;
+	/* Allocate new tss */
+	if (TRUE != allocate_tss_entry(tss_entry_index, &tss))
+	{
+		/* Error allocating tss entry */
+		return 0;
+	}
 
 	/* Set tss entry */
-	set_entry_bounds(tss_entry_index, (ulong_t)&g_tss, sizeof(tss_t));
+	set_entry_bounds(tss_entry_index, (ulong_t)tss, sizeof(tss_t));
 	tss_entry->db_bit = 0;
-	tss_entry->dpl = USER_PRIVILEGE;
+	tss_entry->dpl = KERNEL_PRIVILEGE;
 	tss_entry->present = 1;
 	tss_entry->system = 0;
 	tss_entry->type = TSS_TYPE_AVAILABLE;
 	tss_entry->reserved = 0;
 	tss_entry->granularity = GDT_GRANULARITY_BYTES;
 
-	/* Set tss values */
-	memset(&g_tss, '\0', sizeof(tss_t));
-	g_tss.ss_0 = KERNEL_DS;
-	g_tss.ss_1 = KERNEL_DS;
-	g_tss.ss_2 = KERNEL_DS;
-
-	/* Load tss */
-	load_tr( segment_selector(USER_PRIVILEGE, TRUE, tss_entry_index) );
-
-	/* Success */
-	return TRUE;
+	/* Return the gtd entry number */
+	return tss_entry_index;
 }
 
-void set_tss_available()
+void set_tss_available(ushort_t tss_entry_index)
 {
 	/* Declare variables */
 	gdt_entry_t * tss_entry = NULL;
-
+	
 	/* Get gdt */
-	tss_entry = get_gdt_entry(g_tss_entry_index);
+	tss_entry = get_gdt_entry(tss_entry_index);
 	if (NULL == tss_entry)
 	{
 		/* Error allocating gdt entry */
@@ -78,15 +119,30 @@ void set_tss_available()
 
 	/* Set the type */
 	tss_entry->type = TSS_TYPE_AVAILABLE;
+
+	return;
 }
 
-tss_t * get_tss()
+tss_t * get_tss(ulong_t tss_entry_index)
 {
-	/* Check that we allocated the tss */
-	if (0 == g_tss_entry_index) {
-		return NULL;
+	/* Declare variables */
+	gdt_entry_t * tss_entry = NULL;
+	ulong_t i = 0;
+
+	/* Get gdt */
+	tss_entry = get_gdt_entry(tss_entry_index);
+	if (NULL == tss_entry) {
+		/* Error allocating gdt entry */
+		return;
+	}
+
+	/* Find the tss */
+	for (i = 1; i < NUMBER_OF_TSS_ENTRIES; i++) {
+		if (g_tss_table[i].tss_entry_index == tss_entry_index) {
+			return &g_tss_table[i].tss;
+		}
 	}
 
 	/* Return the tss */
-	return &g_tss;
+	return NULL;
 }
