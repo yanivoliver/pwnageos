@@ -12,6 +12,7 @@ Schedule handling
 #include "syscall.h"
 #include "keyboard.h"
 #include "tss.h"
+#include "gdt.h"
 
 #define STACK_DONT_FIX				(0)
 #define STACK_FIX_KERNEL_TO_USER	(1)
@@ -26,6 +27,7 @@ process_t g_process_list[NUMBER_OF_PROCESSES] = {0};
 ulong_t g_scheduler_fixed_stack = STACK_DONT_FIX;
 bool_t g_scheduling_enabled = FALSE;
 
+extern void load_ldtr(ushort_t * row);
 extern int getch();
 extern int getchar();
 extern int putch(int c);
@@ -35,6 +37,14 @@ extern void fread(void * buffer, ulong_t length);
 
 extern void enable_interrupts();
 extern void disable_interrupts();
+
+
+void empty()
+{
+	for (;;) {
+		printf(NULL, "A");
+	}
+}
 
 ulong_t init_schedule()
 {
@@ -56,13 +66,13 @@ ulong_t init_schedule()
 	idle_process_id = create_process(idle, "System");
 
 	/* Process 2 */
-	create_process(idle_fourth, "Testing simple input");
+	///create_process(idle/*_fourth*/, "Testing simple input");
 	
 	/* Process 3 */
-	create_process(idle/*_second*/, "Testing interactive input");
+	///create_process(idle/*_second*/, "Testing interactive input");
 
 	/* Process 4 */
-	create_process(idle_third, "Testing output");
+	///create_process(idle/*_third*/, "Testing output");
 
 	/* Set the current process to the empty first entry */
 	g_current_process = NULL;
@@ -223,6 +233,7 @@ static ulong_t create_process(ulong_t entry_point, uchar_t * name)
 {
 	/* Declare variables */
 	process_t * process = NULL;
+	ulong_t tss_entry_index = 0;
 
 	/* Allocate process memory */
 	process = allocate_process_memory();
@@ -237,6 +248,13 @@ static ulong_t create_process(ulong_t entry_point, uchar_t * name)
 	/* Set new process id */
 	g_process_id++;
 	process->process_id = g_process_id;
+
+	/* Create and set tss information */
+	tss_entry_index = create_tss();
+	if (0 == tss_entry_index) {
+		return 0;
+	}
+	process->tss_entry_index = tss_entry_index;
 
 	/* Set the input information */
 	process->input.current_key = KEYQUEUE_NEW_QUEUE;
@@ -295,6 +313,18 @@ static ulong_t create_process(ulong_t entry_point, uchar_t * name)
 }
 
 void schedule(ushort_t irq, registers_t * registers)
+{
+	/* Declare variables */
+	process_t * process = NULL;
+	registers_t * registers_pointer = NULL;
+	registers_t * registers_fixed = NULL;
+	tss_t * tss = NULL;
+	bool_t process_found = FALSE;
+	uchar_t input = 0;
+	ulong_t i = 0;
+}
+
+void schedule_old(ushort_t irq, registers_t * registers)
 {
 	/* Declare variables */
 	process_t * process = NULL;
@@ -439,11 +469,11 @@ void schedule(ushort_t irq, registers_t * registers)
 	}
 
 	/* Change the TSS values to the current's process kernel stack */
-	tss = get_tss();
+	//tss = get_tss();
 
 	/* Change tss values */
-	tss->ss_0 = KERNEL_DS;
-	tss->esp_0 = g_current_process->kernel_stack;
+	////tss->ss_0 = KERNEL_DS;
+	////tss->esp_0 = g_current_process->kernel_stack;
 	g_current_process->kernel_mode = FALSE;
 
 	/* From now on... the new process supposed to be loaded */

@@ -18,6 +18,7 @@ struct process_rec {
 	ulong_t process_id;
 	registers_t registers;
 	registers_t registers_kernel;
+	ulong_t tss_entry_index;
 	ulong_t kernel_stack;
 	bool_t kernel_mode;
 	bool_t blocking;

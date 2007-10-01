@@ -18,19 +18,26 @@
 ; Intel made our life harder when they made interrupts which push error codes and interrupts which doesnt push them ..
 ; This is why we have two diffrent basic interrupt handlers
 ; one which pushed a fake error code
-%macro basic_interrupt_handler 1
+%macro basic_trap_handler 1
 align 16
 	;cli
     push    dword %1                ; push interrupt number
-    jmp common_interrupt_handler    ; jump to common handler
+    jmp common_trap_handler    ; jump to common handler
 %endmacro
 
-%macro basic_interrupt_handler_with_error_code 1
+%macro basic_trap_handler_with_error_code 1
 align 16
 	;cli
     ;push    dword 0                 ; Fake error code
     push    dword %1                ; push interrupt number
-    jmp common_interrupt_handler_push_error_code    ; jump to common handler
+    jmp common_trap_handler_push_error_code    ; jump to common handler
+%endmacro
+
+%macro basic_irq_handler_with_error_code 1
+align 16
+    push    dword 0                 ; Fake error code
+    push    dword %1                ; push interrupt number
+    jmp common_irq_handler    ; jump to common irq handler
 %endmacro
 
 ; ----------
@@ -79,7 +86,7 @@ align 16
 
 ; Set the EFLAGS
 %macro SET_EFLAGS 1
-    mov [esp+(15*4)], %1
+    mov dword [esp+(15*4)], %1
 %endmacro
 
 
@@ -133,6 +140,10 @@ EXPORT gets
 EXPORT puts
 EXPORT fread
 
+EXPORT scheduler_low
+
+IMPORT irq_send_ack
+IMPORT g_irq_handlers
 IMPORT g_idt_handlers
 IMPORT idle
 IMPORT g_tss
@@ -267,15 +278,112 @@ enter_user_mode:
     ;call set_tss_available
     ;jmp dword (5<<3):00h
     ret
+    
+common_irq_handler:
+	pusha
+	push ds
+	push es
+	push fs
 
-common_interrupt_handler_push_error_code:
+	; Load kernel data segment
+    mov ax, KERNEL_DS
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    
+    ; Calculate the irq number
+    GET_INTERRUPT_NUMBER(ebx)
+    sub ebx, FIRST_EXTERNAL_INTERRUPT
+    dec ebx
+    
+    ; Call irq handler
+    mov eax, g_irq_handlers
+    mov eax, [eax+ebx*4]
+    
+    ; Check if there is any handler
+    test eax, eax
+    jz .irq_no_handler_found
+    
+    mov edx, esp
+    push edx
+    push ebx
+    ;call eax
+    add esp, 08h
+    
+    ; No handler found. Print appropriate message.    
+.irq_no_handler_found:
+    xor ecx, ecx
+    push debug_message_1
+    push ecx
+    call printf
+    add esp, 08h
+
+.continue_common_irq_handler:
+    ; Send ack to the PIC
+    push ebx
+    call irq_send_ack
+    add esp, 04h
+
+    ; Check for DPC
+    ; Call DPC task
+    
+    pop fs
+    pop es
+    pop ds
+    popa
+    
+    ; Skip the interrupt number and error code
+    add esp, 8
+    
+    iretd
+
+common_trap_handler_push_error_code:
 	push eax
 	push eax
 	mov eax, [esp+08h]
 	mov dword [esp+08h], 0
 	mov dword [esp+04h], eax
 	pop eax
-	jmp common_interrupt_handler
+	jmp common_trap_handler
+
+common_trap_handler:
+	pusha
+	push ds
+	push es
+	push fs
+
+	; Load kernel data segment
+    mov ax, KERNEL_DS
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    
+    GET_INTERRUPT_NUMBER(ebx)
+    GET_ERROR_CODE(eax)
+    
+    xor ecx, ecx
+    push eax
+    push ebx
+    push interrupt_message_error
+    push ecx
+    call printf
+    add esp, 010h
+
+.continue_common_trap_handler:   
+    pop fs
+    pop es
+    pop ds
+    popa
+    
+    ; Skip the interrupt number and error code
+    add esp, 8
+    
+    iretd
+    
+; Low schduler
+scheduler_low:
+	iretd
+	
 
 ; New interrupt handler
 common_interrupt_handler:
@@ -563,28 +671,40 @@ g_basic_interrupt_handlers_table:
 ; Notice we already assigned interrupt 0
 ; Interrupts 8, 10, 11, 12, 13, 14, 17 have error code
 ; pushed by the processor
-basic_interrupt_handler_with_error_code 0
-basic_interrupt_handler_with_error_code 1
-basic_interrupt_handler_with_error_code 2
-basic_interrupt_handler_with_error_code 3
-basic_interrupt_handler_with_error_code 4
-basic_interrupt_handler_with_error_code 5
-basic_interrupt_handler_with_error_code 6
-basic_interrupt_handler_with_error_code 7
-basic_interrupt_handler 8
-basic_interrupt_handler_with_error_code 9
-basic_interrupt_handler 10
-basic_interrupt_handler 11
-basic_interrupt_handler 12
-basic_interrupt_handler 13
-basic_interrupt_handler 14
-basic_interrupt_handler_with_error_code 15
-basic_interrupt_handler_with_error_code 16
-basic_interrupt_handler 17
+basic_trap_handler_with_error_code 0
+basic_trap_handler_with_error_code 1
+basic_trap_handler_with_error_code 2
+basic_trap_handler_with_error_code 3
+basic_trap_handler_with_error_code 4
+basic_trap_handler_with_error_code 5
+basic_trap_handler_with_error_code 6
+basic_trap_handler_with_error_code 7
+basic_trap_handler 8
+basic_trap_handler_with_error_code 9
+basic_trap_handler 10
+basic_trap_handler 11
+basic_trap_handler 12
+basic_trap_handler 13
+basic_trap_handler 14
+basic_trap_handler_with_error_code 15
+basic_trap_handler_with_error_code 16
+basic_trap_handler 17
 
 %assign int_number 18
-%rep NUMBER_OF_IDT_ENTRIES-18
-    basic_interrupt_handler_with_error_code int_number
+%rep 47-18
+    basic_trap_handler_with_error_code int_number
+    %assign int_number int_number+1
+%endrep
+
+%assign int_number 030h
+%rep 0Fh
+    basic_irq_handler_with_error_code int_number
+    %assign int_number int_number+1
+%endrep
+
+%assign int_number 64
+%rep NUMBER_OF_IDT_ENTRIES-64
+    basic_trap_handler_with_error_code int_number
     %assign int_number int_number+1
 %endrep
 interrupt_handlers_table_end:
@@ -593,5 +713,6 @@ interrupt_handlers_table_end:
 ; Some data variables
 g_basic_interrupt_handler_size      dd (((interrupt_handlers_table_end-g_basic_interrupt_handlers_table) / NUMBER_OF_IDT_ENTRIES) + 1)
 interrupt_message                   db 'Interrupt 0x%X called, no deafult handler found !', 00Ah, 0
+interrupt_message_error             db '[0x%X, #%X]', 00Ah, 0
 debug_message_1                     db '[%X%X]', 0
 

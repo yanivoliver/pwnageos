@@ -48,6 +48,16 @@ int main(void)
 	ulong_t idle_process_id = 0;
 
 	/* Initialize screen and scheduler without any messages */
+	if (TRUE != init_gdt()) {
+		/* Error initializing gdt */
+		infinite_loop();
+	}
+
+	if (TRUE != init_tss()) {
+		/* Error initializing tss */
+		infinite_loop();
+	}
+
 	idle_process_id = init_schedule();
 	if (0 == idle_process_id) {
 		/* Error initializing scheduler */
@@ -60,8 +70,9 @@ int main(void)
 	}
 
 	MAIN_INITIALIZE(interrupts, "interrupts");
-	MAIN_INITIALIZE(gdt, "gdt table");
-	MAIN_INITIALIZE(tss, "tss");
+	infinite_loop();
+	//MAIN_INITIALIZE(gdt, "gdt table");
+	//MAIN_INITIALIZE(tss, "tss");
 	MAIN_INITIALIZE(syscall, "syscall manager");
 	MAIN_INITIALIZE(keyboard, "keyboard");
 	//MAIN_INITIALIZE(dma, "dma");
@@ -69,6 +80,8 @@ int main(void)
 
 	install_irq_handler(0, schedule);
 	enable_irq(0);
+
+	//tss_jump();
 
 	/* Enter into an infinite loop */
 	infinite_loop();
@@ -80,5 +93,5 @@ int main(void)
 
 void empty_irq_handler(ushort_t irq, registers_t * registers)
 {
-	printf(NULL, "7,");
+	printf(NULL," HAHA");
 }

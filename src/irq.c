@@ -195,6 +195,25 @@ void common_irq_handler(ushort_t interrupt_number, registers_t * registers)
     }
 }
 
+void irq_send_ack(ulong_t irq)
+{
+	/* Declare variables */
+	ulong_t command = 0;
+
+	/* Build the command */
+	command = 0x60 | (irq & 0x7);
+
+	/* Send the ack */
+    if (8 > irq) {
+		/* Send a message only the the first PIC */
+		out(PIC_0_CONTROL, command);
+    } else {
+		/* Send a message to each PIC*/
+		out(PIC_1_CONTROL, command);
+		out(PIC_0_CONTROL, 0x62);
+    }
+}
+
 bool_t is_irq_interrupt(ulong_t interrupt_number)
 {
 	/* Variables */

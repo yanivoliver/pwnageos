@@ -86,4 +86,6 @@ Returns			: void
 */
 void set_irq_dispatching(bool_t dispatch);
 
+void irq_send_ack(ulong_t irq);
+
 #endif

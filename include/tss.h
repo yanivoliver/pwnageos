@@ -6,14 +6,16 @@ Author: Shimi G.
 #ifndef HEADER_PWNAGE_TSS
 #define HEADER_PWNAGE_TSS
 
+
 /* TSS Types */
-#define TSS_TYPE_AVAILABLE	(9)
-#define TSS_TYPE_BUSY		(11)
+#define TSS_TYPE_AVAILABLE		(9)
+#define TSS_TYPE_BUSY			(11)
 
 /* Entry for a gdt */
+#define NUMBER_OF_TSS_ENTRIES	(30)
+
 typedef struct tss_rec {
-	ushort_t	back_link;
-	ushort_t	reserved_0;
+	uint_t		back_link;
 	uint_t		esp_0;
 	uint_t		ss_0;
 	uint_t		esp_1;
@@ -50,22 +52,39 @@ typedef struct tss_rec {
 	ushort_t	debug_trap : 1		__attribute__((packed));
 	ushort_t	reserved_11 : 15	__attribute__((packed));
 	ushort_t	io_map;
+	ushort_t	io_map2;
 } tss_t;
+
+typedef struct tss_entry_rec {
+	bool_t used;
+	ulong_t tss_entry_index;
+	tss_t tss;
+} tss_entry_t;
 
 /*
 Function name	: set_tss_available
 Purpose			: Sets the tss entry to available type
 Parameters		: None
 */
-void set_tss_available();
+void set_tss_available(ushort_t tss_entry_index);
+
+/*
+Function name	: create_tss
+Purpose			: Cerates a new tss entry
+Parameters		: None
+Returns			: GDT TSS Entry
+*/
+ulong_t create_tss();
 
 /*
 Function name	: get_tss
 Purpose			: Returns a pointer to the single tss entry
-Parameters		: None
+Parameters		: tss_entry_index - GDT TSS Entry
 Returns			: Pointer to the tss entry
 */
-tss_t * get_tss();
+tss_t * get_tss(ulong_t tss_entry_index);
+
+void tss_jump(ulong_t tss_entry_index);
 
 #endif
 
