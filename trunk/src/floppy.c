@@ -178,51 +178,40 @@ bool_t floppy_command_sense_interrupt()
 	return TRUE;
 }
 
-bool_t floppy_read_sector_status()
+bool_t floppy_read_to_buf(void * buf, size_t buf_size)
 {
-	/* Declare variables */
-	uchar_t byte_0 = 0;
-	uchar_t byte_1 = 0;
-	uchar_t byte_2 = 0;
-	uchar_t byte_3 = 0;
-	uchar_t byte_4 = 0;
-	uchar_t byte_5 = 0;
-	uchar_t byte_6 = 0;
+	size_t read_size = 0;
 
-	/* Receive result byte 0 */
-	if (TRUE == floppy_receive_byte(&byte_0)) {
-		/* Receive result byte 0 */
-		if (TRUE == floppy_receive_byte(&byte_1)) {
-			/* Receive result byte 0 */
-			if (TRUE == floppy_receive_byte(&byte_2)) {
-				/* Receive result byte 0 */
-				if (TRUE == floppy_receive_byte(&byte_3)) {
-					/* Receive result byte 0 */
-					if (TRUE == floppy_receive_byte(&byte_4)) {
-						/* Receive result byte 0 */
-						if (TRUE == floppy_receive_byte(&byte_5)) {
-							/* Receive result byte 0 */
-							if (TRUE == floppy_receive_byte(&byte_6)) {
-								g_sector_status.status_0 = byte_0;
-								g_sector_status.status_1 = byte_1;
-								g_sector_status.status_2 = byte_2;
-								g_sector_status.cylinder = byte_3;
-								g_sector_status.head = byte_4;
-								g_sector_status.sector = byte_5;
-								g_sector_status.sector_length = byte_6;
-
-								/* Success */
-								return TRUE;
-							}
-						}
-					}
-				}
-			}
+	while (read_size < buf_size)
+	{
+		if (!floppy_receive_byte(&((uchar_t *)buf)[read_size]))
+		{
+			break;
 		}
+
+		read_size++;
 	}
 
-	/* Failure */
+	if (read_size == buf_size)
+	{
+		return TRUE;
+	}
+
 	return FALSE;
+}
+
+bool_t floppy_read_sector_status()
+{
+	floppy_sector_status_t temp_sector_status;
+
+	if (!floppy_read_to_buf((void *)&temp_sector_status, sizeof(temp_sector_status))
+	{
+		return FALSE;
+	}
+
+	memcpy(&g_sector_status, &temp_sector_status, sizeof(g_sector_status));
+
+	return TRUE;
 }
 
 bool_t floppy_command_seek(uchar_t head, uchar_t cylinder)
@@ -277,113 +266,103 @@ bool_t floppy_command_seek(uchar_t head, uchar_t cylinder)
 	return send_success;
 }
 
+bool_t floppy_send_data(void * buf, size_t buf_size)
+{
+	size_t send_size = 0;
+
+	while (send_size < buf_size)
+	{
+		if (!floppy_send_byte(((uchar *)buf)[send_size]))
+		{
+			break;
+		}
+
+		send_size++;
+	}
+
+	if (send_size != buf_size)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 bool_t floppy_command_read_write(uchar_t head, uchar_t cylinder, uchar_t sector)
 {
-	/* Declare variables */
-	uchar_t byte_0 = 0;
-	uchar_t byte_1 = 0;
-	uchar_t byte_2 = 0;
-	uchar_t byte_3 = 0;
-	uchar_t byte_4 = 0;
-	uchar_t byte_5 = 0;
-	uchar_t byte_6 = 0;
-	uchar_t byte_7 = 0;
-	uchar_t byte_8 = 0;
+	/* Declare variables */	
+	uchar_t data[8];
 	bool_t send_success = FALSE;
 	ulong_t retries = 0;
 
 	/* Set command byte */
-	byte_0 = FLOPPY_COMMAND_READ;
+	data[0] = FLOPPY_COMMAND_READ;
 
 	/* Set as multitrack */
-	byte_0 |= 128;
+	data[0] |= 128;
 
 	/* Set as double density mode */
-	byte_0 |= 64;
+	data[0] |= 64;
 
 	/* Set as skip deleted sectors */
-	byte_0 |= 32;
+	data[0] |= 32;
 
 	/* Set head and drive byte */
-	byte_1 = ((head & 0x1) << 2) | (FLOPPY_A & 0x3);
+	data[1] = ((head & 0x1) << 2) | (FLOPPY_A & 0x3);
 
 	/* Set cylinder */
-	byte_2 = cylinder;
+	data[2] = cylinder;
 
 	/* Set head */
-	byte_3 = head;
+	data[3] = head;
 
 	/* Set sector */
-	byte_4 = sector;
+	data[4] = sector;
 
 	/* Set sector size */
-	byte_5 = 2;
+	data[5] = 2;
 
 	/* Set end of track */
-	byte_6 = sector;
+	data[6] = sector;
 
 	/* Set gap length  */
-	byte_7 = g_floppy_types_gaps[g_floppy_drives[FLOPPY_A].type];
+	data[7] = g_floppy_types_gaps[g_floppy_drives[FLOPPY_A].type];
 
 	/* Set data length  */
-	byte_8 = 255;
+	data[8] = 255;
 
-	while (TRUE != send_success && retries < FLOPPY_RETRIES_READ) {
+	while ((!send_success) && (retries < FLOPPY_RETRIES_READ)) {
 		/* Seek for the cylinder */
-		if (TRUE == floppy_command_seek(head, cylinder)) {
+		if (floppy_command_seek(head, cylinder)) {
 			/* Set as pending for interrupt */
 			g_floppy_pending = TRUE;
 
 			/* Set initial value as failure */
 			send_success = FALSE;
 
-			/* Send byte 0 */
-			if (TRUE == floppy_send_byte(byte_0)) {
-				/* Send byte 1 */
-				if (TRUE == floppy_send_byte(byte_1)) {
-					/* Send byte 2 */
-					if (TRUE == floppy_send_byte(byte_2)) {
-						/* Send byte 3 */
-						if (TRUE == floppy_send_byte(byte_3)) {
-							/* Send byte 4 */
-							if (TRUE == floppy_send_byte(byte_4)) {
-								/* Send byte 5 */
-								if (TRUE == floppy_send_byte(byte_5)) {
-									/* Send byte 6 */
-									if (TRUE == floppy_send_byte(byte_6)) {
-										/* Send byte 7 */
-										if (TRUE == floppy_send_byte(byte_7)) {
-											/* Send byte 8 */
-											if (TRUE == floppy_send_byte(byte_8)) {
-												/* Wait for an interrupt */
-												printf(NULL, "WAITING FOR DATA...");
-												floppy_delay_on_interrupt();
-												printf(NULL, "Yeah ...");
+			if (floppy_send_data((void *)data, sizeof(data))
+			{
+				/* Wait for an interrupt */
+				printf(NULL, "WAITING FOR DATA...");
+				floppy_delay_on_interrupt();
+				printf(NULL, "Yeah ...");
 
-												/* Read sector status */
-												if (TRUE == floppy_read_sector_status()) {
-													if (g_sector_status.cylinder == cylinder &&
-														g_sector_status.head == head &&
-														g_sector_status.sector == sector &&
-														g_sector_status.sector_length == byte_4) {
-														
-														/* Success */
-														send_success = TRUE;
-													}
-												}
-											}
-										}
-									}
-								}
-							}
-						}
+				/* Read sector status */
+				if (floppy_read_sector_status()) {
+					if (g_sector_status.cylinder == cylinder &&
+						g_sector_status.head == head &&
+						g_sector_status.sector == sector &&
+						g_sector_status.sector_length == byte_4) {
+
+							/* Success */
+							send_success = TRUE;
 					}
 				}
 			}
 		}
 
 		/* Recalibrate */
-		if (FALSE == send_success) {
+		if (!send_success) {
 			floppy_command_recalibrate();
 		}
 
