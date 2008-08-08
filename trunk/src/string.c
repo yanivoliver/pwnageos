@@ -1,6 +1,9 @@
 /*
 	String Operations
 	Author: Roy Reznik
+
+	Modified by:
+		Roy Reznik 08/08/08
 */
 
 #include "common.h"
@@ -26,7 +29,22 @@ size_t strlen(const char *str)
 
 char * strcpy(char *strDestination, const char *strSource)
 {
+	size_t i = 0;
+
+	for (i = 0;'\0' != *strSource;i++)
+	{
+		strDestination[i] = strSource[i];
+	}
+
+	strDestination[i] = '\0';
+
+	return strDestination;
+}
+
+char * strcat(char *strDestination, const char *strSource)
+{
 	size_t uiDestLength = 0;
+	char * destOriginal = strDestination;
 
 	uiDestLength = strlen(strDestination);
 
@@ -39,9 +57,9 @@ char * strcpy(char *strDestination, const char *strSource)
 		strSource++;
 	}
 
-	*strDestination = 0;
+	*strDestination = '\0';
 
-	return strDestination;
+	return destOriginal;
 }
 
 char * strchr(const char *str, int c)

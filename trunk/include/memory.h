@@ -25,4 +25,6 @@ Returns			: The address of destination on success, NULL on failure
 */
 void * memcpy(void * destination, void * source, ulong_t size);
 
+#define ZERO_STRUCTURE(x) (memset((&x), (0), (sizeof((x)))))
+
 #endif
