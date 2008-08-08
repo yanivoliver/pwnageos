@@ -1,7 +1,10 @@
 /*
-Memory functions
+Floppy functions
 Author: Shimi G.
 Date: 04/05/07
+
+Modified by: 
+	Roy Reznik 08/08/08
 */
 
 #include "common.h"
@@ -10,6 +13,7 @@ Date: 04/05/07
 #include "dma.h"
 #include "irq.h"
 #include "io.h"
+#include "memory.h"
 
 #define FLOPPY_DELAY_LOOPS	(999999)
 
