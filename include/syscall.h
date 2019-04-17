@@ -8,7 +8,9 @@ Author: Shimi G
 
 #define NUMBER_OF_SYSCALL_ENTRIES	(255) /* The max value of AL*/
 
-typedef bool_t (*syscall_handler_t)(registers_t * registers, struct syscall_entry_rec * syscall_entry);
+struct syscall_entry_rec;
+
+typedef bool_t (*syscall_handler_t)(registers_t *registers, struct syscall_entry_rec *syscall_entry);
 
 typedef struct syscall_entry_rec {
 	uchar_t key;

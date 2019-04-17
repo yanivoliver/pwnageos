@@ -6,6 +6,7 @@ Author: Shimi G.
 #ifndef HEADER_PWNAGE_TSS
 #define HEADER_PWNAGE_TSS
 
+#include "common.h"
 
 /* TSS Types */
 #define TSS_TYPE_AVAILABLE		(9)

@@ -6,6 +6,8 @@ Author: Shimi G.
 #ifndef HEADER_PWNAGE_GDT
 #define HEADER_PWNAGE_GDT
 
+#include "common.h"
+
 /* Number of gdt entries */
 #define NUMBER_OF_GDT_ENTRIES		(16)
 #define GDT_ENTRY_SIZE				(8)

@@ -17,7 +17,7 @@ Purpose			: Create a signle-threaded process
 Parameters		: entry_points - Address to the main function
 				  name - Process name, can be set to NULL
 */
-ulong_t create_process(ulong_t entry_point, uchar_t * name);
+static ulong_t create_process(ulong_t entry_point, uchar_t * name);
 
 /*
 Function name	: init_schedule

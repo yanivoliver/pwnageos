@@ -17,7 +17,7 @@ Modified by:
 
 #define FLOPPY_DELAY_LOOPS	(999999)
 
-static floppy_drive_t g_floppy_drives[2] = {0};
+static floppy_drive_t g_floppy_drives[2] __attribute__((aligned)) = {0};
 static floppy_sector_status_t g_sector_status = {0};
 static floppy_sense_interrupt_result_t g_sense_interrupt = {0};
 static ushort_t floppy_base_address[] = {0x3F0, 0x370};
@@ -71,43 +71,44 @@ floppy_main_status_register_t floppy_read_main_status_register()
 	return msr;
 }
 
-bool_t floppy_reset()
-{	
-	/* Declare variabels */
-	ulong_t i = 0;
+bool_t floppy_command_sense_interrupt();
 
-	/* Set floppy as pending */
-	g_floppy_pending = TRUE;
+bool_t floppy_reset() {
+  /* Declare variabels */
+  ulong_t i = 0;
 
-	/* Reset floppy */
-	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0);
+  /* Set floppy as pending */
+  g_floppy_pending = TRUE;
 
-	/* Wait for floppy to be resetted */
-	floppy_delay();
+  /* Reset floppy */
+  out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0);
 
-	/* Set floppy mode to 500bit\s */
-	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_INPUT), 0);
+  /* Wait for floppy to be resetted */
+  floppy_delay();
 
-	/* Enable floppy again */
-	out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0xC);
+  /* Set floppy mode to 500bit\s */
+  out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_INPUT), 0);
 
-	/* Wait for floppy to be setted */
-	floppy_delay();
+  /* Enable floppy again */
+  out(FLOPPY_PORT(FLOPPY_A, FLOPPY_DIGITAL_OUTPUT), 0xC);
 
-	/* Check if interrupt fired */
-	if (TRUE == g_floppy_pending) {
-		return FALSE;
-	}
+  /* Wait for floppy to be setted */
+  floppy_delay();
 
-	/* Sense for 4 times */
-	for (i = 0; i < 4; i++) {
-		if (TRUE != floppy_command_sense_interrupt(NULL)) {
-			return FALSE;
-		}
-	}
+  /* Check if interrupt fired */
+  if (TRUE == g_floppy_pending) {
+    return FALSE;
+  }
 
-	/* Return true */
-	return TRUE;
+  /* Sense for 4 times */
+  for (i = 0; i < 4; i++) {
+    if (TRUE != floppy_command_sense_interrupt(NULL)) {
+      return FALSE;
+    }
+  }
+
+  /* Return true */
+  return TRUE;
 }
 
 void floppy_set_data_rate(floppy_data_rate_t data_rate)
@@ -148,6 +149,9 @@ bool_t floppy_motor_off()
 	return TRUE;
 
 }
+
+bool_t floppy_send_byte(uchar_t data);
+bool_t floppy_receive_byte(uchar_t * data);
 
 bool_t floppy_command_sense_interrupt()
 {
@@ -208,7 +212,7 @@ bool_t floppy_read_sector_status()
 {
 	floppy_sector_status_t temp_sector_status;
 
-	if (!floppy_read_to_buf((void *)&temp_sector_status, sizeof(temp_sector_status))
+	if (!floppy_read_to_buf((void *)&temp_sector_status, sizeof(temp_sector_status)))
 	{
 		return FALSE;
 	}
@@ -276,7 +280,7 @@ bool_t floppy_send_data(void * buf, size_t buf_size)
 
 	while (send_size < buf_size)
 	{
-		if (!floppy_send_byte(((uchar *)buf)[send_size]))
+		if (!floppy_send_byte(((unsigned char *)buf)[send_size]))
 		{
 			break;
 		}
@@ -291,6 +295,8 @@ bool_t floppy_send_data(void * buf, size_t buf_size)
 
 	return TRUE;
 }
+
+bool_t floppy_command_recalibrate();
 
 bool_t floppy_command_read_write(uchar_t head, uchar_t cylinder, uchar_t sector)
 {
@@ -344,7 +350,7 @@ bool_t floppy_command_read_write(uchar_t head, uchar_t cylinder, uchar_t sector)
 			/* Set initial value as failure */
 			send_success = FALSE;
 
-			if (floppy_send_data((void *)data, sizeof(data))
+			if (floppy_send_data((void *)data, sizeof(data)))
 			{
 				/* Wait for an interrupt */
 				printf(NULL, "WAITING FOR DATA...");
@@ -356,7 +362,7 @@ bool_t floppy_command_read_write(uchar_t head, uchar_t cylinder, uchar_t sector)
 					if (g_sector_status.cylinder == cylinder &&
 						g_sector_status.head == head &&
 						g_sector_status.sector == sector &&
-						g_sector_status.sector_length == byte_4) {
+						g_sector_status.sector_length == 4) {
 
 							/* Success */
 							send_success = TRUE;
