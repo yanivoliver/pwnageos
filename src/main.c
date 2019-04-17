@@ -70,13 +70,12 @@ int main(void)
 	}
 
 	MAIN_INITIALIZE(interrupts, "interrupts");
-	infinite_loop();
-	//MAIN_INITIALIZE(gdt, "gdt table");
-	//MAIN_INITIALIZE(tss, "tss");
+	MAIN_INITIALIZE(gdt, "gdt table");
+	MAIN_INITIALIZE(tss, "tss");
 	MAIN_INITIALIZE(syscall, "syscall manager");
 	MAIN_INITIALIZE(keyboard, "keyboard");
-	//MAIN_INITIALIZE(dma, "dma");
-	//MAIN_INITIALIZE(floppy, "floppy");
+	MAIN_INITIALIZE(dma, "dma");
+	MAIN_INITIALIZE(floppy, "floppy");
 
 	install_irq_handler(0, schedule);
 	enable_irq(0);
