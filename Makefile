@@ -3,11 +3,10 @@
 # Author: Shimi G.
 #
 
-AS = /usr/cross/i586-elf/bin/as.exe
-LD = /usr/cross/i586-elf/bin/ld.exe
-CC = /usr/cross/i586-elf/bin/gcc.exe
-NASM	= nasmw
-CFLAGS	= -Wall -nostdlib -fno-builtin
+LD = ld
+CC = gcc
+NASM	= nasm
+CFLAGS	= -nostdlib -fno-builtin -fno-stack-protector -m32 -fno-pie
 OUTPUT	= bin/
 SRC 		= src/
 INCLUDE = include/
@@ -17,7 +16,7 @@ INCLUDE = include/
 
 # --omagic -O 3 
 kernel.bin : main.o kernel_lowlevel.o interrupts.o io.o screen.o memory.o gdt.o tss.o schedule.o irq.o string.o keyboard.o syscall.o dma.o floppy.o
-	$(LD) -o $(OUTPUT)$@ --entry=0x200000 -Ttext 0x200000 --oformat binary $?
+	$(LD) -o $(OUTPUT)$@ --entry=0x200000 -Ttext 0x200000 --oformat binary -m elf_i386 $?
 	make clean
 	make bootloader
 	make boot.bin
@@ -74,5 +73,5 @@ kernel_lowlevel.o : $(SRC)kernel_lowlevel.asm
 	$(NASM) -f coff -I$(INCLUDE) -o $@ $?
 	
 clean:
-	rm *.o
+	rm -f *.o
 		

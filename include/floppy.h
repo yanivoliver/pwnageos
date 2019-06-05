@@ -8,7 +8,7 @@ Author: Shimi G.
 
 typedef struct floppy_drive_rec {
 	uchar_t type;
-} floppy_drive_t __attribute__ ((aligned));
+} floppy_drive_t;
 
 typedef enum floppy_registers_e {
 	FLOPPY_DIGITAL_OUTPUT = 2,

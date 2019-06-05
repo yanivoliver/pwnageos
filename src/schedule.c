@@ -3,7 +3,9 @@ Handles irq's
 Author: Shimi G.
 Schedule handling
 */
+#include "gdt.h"
 #include "common.h"
+#include "tss.h"
 #include "memory.h"
 #include "irq.h"
 #include "string.h"
@@ -11,8 +13,6 @@ Schedule handling
 #include "schedule.h"
 #include "syscall.h"
 #include "keyboard.h"
-#include "tss.h"
-#include "gdt.h"
 
 #define STACK_DONT_FIX				(0)
 #define STACK_FIX_KERNEL_TO_USER	(1)
